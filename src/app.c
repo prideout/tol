@@ -124,7 +124,7 @@ void draw()
     parg_varray_enable(app.centers, A_CENTER, 4, PARG_FLOAT, 0, 0);
     double aabb[4];
     parg_zcam_get_viewportd(aabb);
-    double minradius = 4.0 * (aabb[2] - aabb[0]) / app.bbwidth;
+    double minradius = 2.0 * (aabb[2] - aabb[0]) / app.bbwidth;
     app.culled = par_bubbles_cull(app.bubbles, aabb, minradius, app.culled);
     int nbytes = app.culled->count * 4 * sizeof(float);
     float* fdisk = parg_buffer_lock_grow(app.centers, nbytes);
@@ -146,7 +146,7 @@ void draw()
 int tick(float winwidth, float winheight, float pixratio, float seconds)
 {
     app.current_time = seconds;
-    app.bbwidth = winwidth * pixratio;
+    app.bbwidth = winwidth;
     parg_zcam_animation anim = app.camera_animation;
     if (anim.start_time > 0) {
         double duration = anim.final_time - anim.start_time;
@@ -262,5 +262,5 @@ int main(int argc, char* argv[])
     parg_window_onexit(dispose);
     parg_window_oninput(input);
     parg_window_onmessage(message);
-    return parg_window_exec(400, 400, 1, 1);
+    return parg_window_exec(400, 400, 1, 0);
 }
