@@ -2,4 +2,4 @@ build
 *.gz
 *.bin
 *.tre
-*.txt
+monolith.*.txt

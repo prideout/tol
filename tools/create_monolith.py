@@ -26,6 +26,7 @@ TAXONOMY_URL = 'http://files.opentreeoflife.org/ott/ott2.9/ott2.9.tgz'
 EXAMPLE_URL = 'http://github.prideout.net/assets/terrainpts.bin'
 SYNTHETIC_URL = 'http://files.opentreeoflife.org/trees/draftversion4.tre.gz'
 DEFAULT_URL = SYNTHETIC_URL
+TREE_VERSION = '0000'
 
 parser = argparse.ArgumentParser(description=__doc__.strip())
 parser.add_argument('-url',
@@ -82,7 +83,7 @@ if __name__ == '__main__':
 
     # Create a simple text file
     puts('Dumping simple text file...')
-    outfile = open('tol.txt', 'wt')
+    outfile = open('monolith.{}.txt'.format(TREE_VERSION), 'wt')
     for clade in tree.find_clades():
         if clade.name:
             name = ' '.join(clade.name.split('_')[:-1])

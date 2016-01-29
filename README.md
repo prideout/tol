@@ -1,7 +1,7 @@
 ```
 git submodule update --init --recursive
 pip install clint requests biopython
-python process.py
+python create_monolith.py
 ```
 
 - https://tree.opentreeoflife.org/about/taxonomy-version/ott2.9
