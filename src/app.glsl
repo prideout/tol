@@ -27,7 +27,9 @@ void main()
     int depth = int(a_depth * 31.0);
     v_background = u_colors[depth > 0 ? depth - 1 : 0];
     v_fill = u_colors[depth];
-    v_fill *= (a_center.w == u_sel) ? 1.25 : 1.0;
+    if (a_center.w == u_sel) {
+        v_fill.rb = v_fill.rb * 0.8;
+    }
     v_rim = a_position.z;
 
     #ifdef SINGLE_PRECISION
@@ -50,9 +52,9 @@ void main()
 void main()
 {
     float fw = fwidth(v_rim);
-    float e = smoothstep(STROKEW - fw, STROKEW + fw, v_rim);
+    float e = smoothstep(STROKEW - 2.0 * fw, STROKEW, v_rim);
     vec3 s = mix(v_fill, STROKEC, e);
     e = smoothstep(1.0 - fw, 1.0, v_rim);
     s = mix(s, v_background, e);
-    gl_FragColor = vec4(s, 1.0);
+    gl_FragColor = vec4(s, 1.0 - e);
 }

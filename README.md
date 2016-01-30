@@ -1,3 +1,14 @@
+## Graphical Client
+
+```
+brew tap homebrew/versions
+brew install cmake glfw3 emscripten
+source tools/aliases.sh
+init && build && build/app
+```
+
+## Data Pipeline
+
 ```
 pip install clint requests biopython flask
 ./tools/create_monolith.py

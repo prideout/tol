@@ -1,4 +1,5 @@
 #define PAR_BUBBLES_IMPLEMENTATION
+#define PAR_COLOR_IMPLEMENTATION
 
 #include <parg.h>
 #include <parwin.h>
@@ -6,6 +7,7 @@
 #include <string.h>
 #include <par_bubbles.h>
 #include <par_shapes.h>
+#include <par_color.h>
 
 #define TOKEN_TABLE(F)          \
     F(P_SIMPLE, "p_simple")     \
@@ -77,21 +79,31 @@ void generate(int nnodes)
 
     // Initialize the uniform array.
     parg_shader_bind(P_SIMPLE);
+    const float a[3] = {150, 0.1, 0.3};
+    const float b[3] = {90, 0.2, 0.5};
+    const float c[3] = {228, 0.2, 0.5};
     float colors[32 * 3];
     for (int i = 0; i < 32; i++) {
-        colors[i * 3 + 0] = i / 31.0f;
-        colors[i * 3 + 1] = 0.5;
-        colors[i * 3 + 2] = 1.0 - colors[i * 3 + 0];
+        float* fresult = colors + i * 3;
+        if (i < 16) {
+            float t = i / 15.0f;
+            par_color_mix_hcl(a, b, fresult, t);
+        } else {
+            float t = (i - 16) / 15.0f;
+            par_color_mix_hcl(b, c, fresult, t);
+        }
+        par_color_hcl_to_rgb(fresult, fresult);
     }
     parg_uniform3fv("u_colors[0]", 32, colors);
+    parg_state_clearcolor((Vector4){
+        0.5 * colors[0], 0.5 * colors[2], 0.5 * colors[1], 1.0});
 }
 
 void init(float winwidth, float winheight, float pixratio)
 {
-    parg_state_clearcolor((Vector4){0.5, 0.6, 0.7, 1.0});
     parg_state_depthtest(0);
     parg_state_cullfaces(1);
-    parg_state_blending(0);
+    parg_state_blending(1);
     parg_shader_load_from_asset(SHADER_SIMPLE);
     parg_zcam_init(WORLDWIDTH, WORLDWIDTH, FOVY);
     generate(2e4);
@@ -287,5 +299,5 @@ int main(int argc, char* argv[])
     parg_window_onexit(dispose);
     parg_window_oninput(input);
     parg_window_onmessage(message);
-    return parg_window_exec(400, 400, 1, 0);
+    return parg_window_exec(600, 600, 1, 0);
 }
