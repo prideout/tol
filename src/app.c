@@ -15,7 +15,7 @@
     F(U_MVP, "u_mvp")           \
     F(U_EYEPOS, "u_eyepos")     \
     F(U_EYEPOS_LOWPART, "u_eyepos_lowpart") \
-    F(U_SEL, "u_sel")
+    F(U_SEL, "u_sel");
 
 TOKEN_TABLE(PARG_TOKEN_DECLARE);
 
@@ -40,6 +40,7 @@ struct {
     float bbwidth;
     int* tree;
     int leaf;
+    int maxdepth;
 } app = {0};
 
 void cleanup()
@@ -70,9 +71,8 @@ void generate(int nnodes)
     app.bubbles = par_bubbles_hpack_circle(app.tree, nnodes, 1.0);
     app.hover = -1;
 
-    int maxdepth;
-    par_bubbles_get_maxdepth(app.bubbles, &maxdepth, &app.leaf);
-    printf("Node %d has depth %d\n", app.leaf, maxdepth);
+    par_bubbles_get_maxdepth(app.bubbles, &app.maxdepth, &app.leaf);
+    printf("Node %d has depth %d\n", app.leaf, app.maxdepth);
     parg_zcam_touch();
 }
 
@@ -118,6 +118,14 @@ void draw()
     parg_uniform_matrix4f(U_MVP, &mvp);
     parg_uniform1f(U_SEL, app.hover);
 
+    float colors[32 * 3];
+    for (int i = 0; i < 32; i++) {
+        colors[i * 3 + 0] = i / 31.0f;
+        colors[i * 3 + 1] = 0.5;
+        colors[i * 3 + 2] = 1.0 - colors[i * 3 + 0];
+    }
+    parg_uniform3fv("u_colors[0]", 32, colors);
+
     // Bind the index buffer and verts for the circle shape at the origin.
     parg_varray_bind(parg_mesh_index(app.disk));
     parg_varray_enable(
@@ -142,12 +150,14 @@ void draw()
     int nbytes = app.culled->count * 5 * sizeof(float);
     float* fdisk = parg_buffer_lock_grow(app.instances, nbytes);
     double const* ddisk = app.culled->xyr;
+    float dscale = 1.0f / app.maxdepth;
     for (int i = 0; i < app.culled->count; i++, fdisk += 5, ddisk += 3) {
+        int id = app.culled->ids[i];
         fdisk[0] = ddisk[0] - eyepos.x;
         fdisk[1] = ddisk[1] - eyepos.y;
         fdisk[2] = ddisk[2];
-        fdisk[3] = app.culled->ids[i];
-        fdisk[4] = 0; // TODO: par_bubbles_get_depth(app.culler, i);
+        fdisk[3] = id;
+        fdisk[4] = par_bubbles_get_depth(app.bubbles, id) * dscale;
     }
     parg_buffer_unlock(app.instances);
 

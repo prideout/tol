@@ -1,6 +1,8 @@
 #include <parg.h>
 #include "pargl.h"
 
+extern GLuint _current_program;
+
 void parg_uniform1i(parg_token tok, int val)
 {
     GLint loc = parg_shader_uniform_get(tok);
@@ -30,6 +32,14 @@ void parg_uniform3f(parg_token tok, const Vector3* val)
     GLint loc = parg_shader_uniform_get(tok);
     if (loc > -1) {
         glUniform3fv(loc, 1, &val->x);
+    }
+}
+
+void parg_uniform3fv(const char* uname, int nvecs, const float* val)
+{
+    GLint loc = glGetUniformLocation(_current_program, uname);
+    if (loc > -1) {
+        glUniform3fv(loc, nvecs, val);
     }
 }
 

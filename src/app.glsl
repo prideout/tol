@@ -7,13 +7,11 @@ uniform mat4 u_mvp;
 uniform float u_sel;
 uniform vec3 u_eyepos;
 uniform vec3 u_eyepos_lowpart;
+uniform vec3 u_colors[32];
 varying float v_rim;
 varying vec3 v_fill;
-varying float v_alpha;
 const float STROKEW = 0.98;
-const vec3 FILLC = vec3(1);
 const vec3 STROKEC = vec3(0);
-const vec3 SELC = vec3(1, 1, 0);
 
 -- vertex
 
@@ -25,9 +23,8 @@ void main()
 {
     vec3 cen = a_center.xyz;
     vec3 pos = vec3(a_position.xy * cen.z + cen.xy, 0.0);
-    bool selected = a_center.w == u_sel;
-    v_fill = selected ? SELC : FILLC;
-    v_alpha = selected ? 0.4 : 0.2;
+    v_fill = u_colors[int(a_depth * 32.0)];
+    v_fill *= (a_center.w == u_sel) ? 1.0 : 1.25;
     v_rim = a_position.z;
 
     #ifdef SINGLE_PRECISION
@@ -51,7 +48,5 @@ void main()
 {
     float fw = fwidth(v_rim);
     float e = smoothstep(STROKEW - fw, STROKEW + fw, v_rim);
-    vec3 v = mix(v_fill, STROKEC, e);
-    float a = mix(v_alpha, 1.0, e);
-    gl_FragColor = vec4(v, a);
+    gl_FragColor = vec4(mix(v_fill, STROKEC, e), 1.0);
 }

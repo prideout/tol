@@ -165,6 +165,7 @@ void parg_uniform1f(parg_token tok, float val);
 void parg_uniform2f(parg_token tok, float x, float y);
 void parg_uniform3f(parg_token, const Vector3* val);
 void parg_uniform4f(parg_token, const Vector4* val);
+void parg_uniform3fv(const char* uname, int nvecs, const float* val);
 void parg_uniform_point(parg_token, const Point3* val);
 void parg_uniform_matrix4f(parg_token, const Matrix4* val);
 void parg_uniform_matrix3f(parg_token, const Matrix3* val);

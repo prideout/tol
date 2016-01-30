@@ -19,8 +19,9 @@ static khash_t(smap)* _fshader_registry = 0;
 static khash_t(glmap)* _program_registry = 0;
 static khash_t(imap)* _attr_registry = 0;
 static khash_t(imap)* _unif_registry = 0;
-static GLuint _current_program = 0;
 static parg_token _current_program_token = 0;
+
+GLuint _current_program = 0;
 
 #define MAX_SHADER_SPEW 1024
 #define MAX_UNIFORM_LEN 128

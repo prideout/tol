@@ -100,6 +100,9 @@ void par_bubbles_get_children(par_bubbles_t const* bubbles, int node,
 void par_bubbles_get_maxdepth(par_bubbles_t const* bubbles, int* maxdepth,
     int* leaf);
 
+// Finds the height of the tree at a certain node.
+int par_bubbles_get_depth(par_bubbles_t const* bubbles, int node);
+
 #ifndef PAR_PI
 #define PAR_PI (3.14159265359)
 #define PAR_MIN(a, b) (a > b ? b : a)
@@ -764,6 +767,18 @@ void par_bubbles_get_maxdepth(par_bubbles_t const* pbubbles, int* maxdepth,
     *maxdepth = -1;
     *leaf = -1;
     return par_bubbles__get_maxdepth(bubbles, maxdepth, leaf, 0, 0);
+}
+
+int par_bubbles_get_depth(par_bubbles_t const* pbubbles, int node)
+{
+    par_bubbles__t const* bubbles = (par_bubbles__t const*) pbubbles;
+    int const* parents = bubbles->graph_parents;
+    int depth = 0;
+    while (node) {
+        node = parents[node];
+        depth++;
+    }
+    return depth;
 }
 
 #endif // PAR_BUBBLES_IMPLEMENTATION
