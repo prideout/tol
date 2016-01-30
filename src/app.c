@@ -11,6 +11,7 @@
     F(P_SIMPLE, "p_simple")     \
     F(A_POSITION, "a_position") \
     F(A_CENTER, "a_center")     \
+    F(A_DEPTH, "a_depth")       \
     F(U_MVP, "u_mvp")           \
     F(U_EYEPOS, "u_eyepos")     \
     F(U_EYEPOS_LOWPART, "u_eyepos_lowpart") \
@@ -31,7 +32,7 @@ struct {
     parg_mesh* disk;
     par_bubbles_t* bubbles;
     par_bubbles_t* culled;
-    parg_buffer* centers;
+    parg_buffer* instances;
     int hover;
     int potentially_clicking;
     double current_time;
@@ -80,7 +81,7 @@ void init(float winwidth, float winheight, float pixratio)
     parg_state_clearcolor((Vector4){0.5, 0.6, 0.7, 1.0});
     parg_state_depthtest(0);
     parg_state_cullfaces(1);
-    parg_state_blending(1);
+    parg_state_blending(0);
     parg_shader_load_from_asset(SHADER_SIMPLE);
     parg_zcam_init(WORLDWIDTH, WORLDWIDTH, FOVY);
     generate(2e4);
@@ -98,7 +99,7 @@ void init(float winwidth, float winheight, float pixratio)
     // Create the vertex buffer with instance-varying data.  We re-populate it
     // on every frame, growing it if necessary.  The starting size doesn't
     // matter much.
-    app.centers = parg_buffer_alloc(512 * 4 * sizeof(float), PARG_GPU_ARRAY);
+    app.instances = parg_buffer_alloc(512 * 5 * sizeof(float), PARG_GPU_ARRAY);
 }
 
 void draw()
@@ -114,31 +115,43 @@ void draw()
     Point3 eyez = {0, 0, eyepos.z};
     parg_uniform_point(U_EYEPOS, &eyez);
     parg_uniform_point(U_EYEPOS_LOWPART, &eyepos_lowpart);
-
     parg_uniform_matrix4f(U_MVP, &mvp);
     parg_uniform1f(U_SEL, app.hover);
+
+    // Bind the index buffer and verts for the circle shape at the origin.
     parg_varray_bind(parg_mesh_index(app.disk));
     parg_varray_enable(
         parg_mesh_coord(app.disk), A_POSITION, 3, PARG_FLOAT, 0, 0);
+
+    // Bind the vertex buffer that contains all once-per-instance attributes.
+    int stride = 5 * sizeof(float), offset = 4 * sizeof(float);
     parg_varray_instances(A_CENTER, 1);
-    parg_varray_enable(app.centers, A_CENTER, 4, PARG_FLOAT, 0, 0);
+    parg_varray_enable(app.instances, A_CENTER, 4, PARG_FLOAT, stride, 0);
+    parg_varray_instances(A_DEPTH, 1);
+    parg_varray_enable(app.instances, A_DEPTH, 1, PARG_FLOAT, stride, offset);
+
+    // Perform frustum culling and min-size culling.
     double aabb[4];
     parg_zcam_get_viewportd(aabb);
     double minradius = 2.0 * (aabb[2] - aabb[0]) / app.bbwidth;
     app.culled = par_bubbles_cull(app.bubbles, aabb, minradius, app.culled);
-    int nbytes = app.culled->count * 4 * sizeof(float);
-    float* fdisk = parg_buffer_lock_grow(app.centers, nbytes);
-    double const* ddisk = app.culled->xyr;
 
+    // Next, re-populate all per-instance vertex buffer data.
     // This bakes the pan offset into the geometry because it allows
-    // us to add a double-precision number with a double-precision number.
-    for (int i = 0; i < app.culled->count; i++, fdisk += 4, ddisk += 3) {
+    // adding a double-precision number to a double-precision number.
+    int nbytes = app.culled->count * 5 * sizeof(float);
+    float* fdisk = parg_buffer_lock_grow(app.instances, nbytes);
+    double const* ddisk = app.culled->xyr;
+    for (int i = 0; i < app.culled->count; i++, fdisk += 5, ddisk += 3) {
         fdisk[0] = ddisk[0] - eyepos.x;
         fdisk[1] = ddisk[1] - eyepos.y;
         fdisk[2] = ddisk[2];
         fdisk[3] = app.culled->ids[i];
+        fdisk[4] = 0; // TODO: par_bubbles_get_depth(app.culler, i);
     }
-    parg_buffer_unlock(app.centers);
+    parg_buffer_unlock(app.instances);
+
+    // Finally, draw all triangles in one fell swoop.
     parg_draw_instanced_triangles_u16(
         0, parg_mesh_ntriangles(app.disk), app.culled->count);
 }
@@ -166,7 +179,7 @@ void dispose()
 {
     parg_shader_free(P_SIMPLE);
     parg_mesh_free(app.disk);
-    parg_buffer_free(app.centers);
+    parg_buffer_free(app.instances);
     cleanup();
 }
 

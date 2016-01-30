@@ -19,6 +19,7 @@ const vec3 SELC = vec3(1, 1, 0);
 
 attribute vec3 a_position;
 attribute vec4 a_center;
+attribute float a_depth;
 
 void main()
 {
