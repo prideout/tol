@@ -10,6 +10,7 @@ uniform vec3 u_eyepos_lowpart;
 uniform vec3 u_colors[32];
 varying float v_rim;
 varying vec3 v_fill;
+varying vec3 v_background;
 const float STROKEW = 0.98;
 const vec3 STROKEC = vec3(0);
 
@@ -23,8 +24,10 @@ void main()
 {
     vec3 cen = a_center.xyz;
     vec3 pos = vec3(a_position.xy * cen.z + cen.xy, 0.0);
-    v_fill = u_colors[int(a_depth * 32.0)];
-    v_fill *= (a_center.w == u_sel) ? 1.0 : 1.25;
+    int depth = int(a_depth * 31.0);
+    v_background = u_colors[depth > 0 ? depth - 1 : 0];
+    v_fill = u_colors[depth];
+    v_fill *= (a_center.w == u_sel) ? 1.25 : 1.0;
     v_rim = a_position.z;
 
     #ifdef SINGLE_PRECISION
@@ -48,5 +51,8 @@ void main()
 {
     float fw = fwidth(v_rim);
     float e = smoothstep(STROKEW - fw, STROKEW + fw, v_rim);
-    gl_FragColor = vec4(mix(v_fill, STROKEC, e), 1.0);
+    vec3 s = mix(v_fill, STROKEC, e);
+    e = smoothstep(1.0 - fw, 1.0, v_rim);
+    s = mix(s, v_background, e);
+    gl_FragColor = vec4(s, 1.0);
 }

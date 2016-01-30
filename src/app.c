@@ -74,6 +74,16 @@ void generate(int nnodes)
     par_bubbles_get_maxdepth(app.bubbles, &app.maxdepth, &app.leaf);
     printf("Node %d has depth %d\n", app.leaf, app.maxdepth);
     parg_zcam_touch();
+
+    // Initialize the uniform array.
+    parg_shader_bind(P_SIMPLE);
+    float colors[32 * 3];
+    for (int i = 0; i < 32; i++) {
+        colors[i * 3 + 0] = i / 31.0f;
+        colors[i * 3 + 1] = 0.5;
+        colors[i * 3 + 2] = 1.0 - colors[i * 3 + 0];
+    }
+    parg_uniform3fv("u_colors[0]", 32, colors);
 }
 
 void init(float winwidth, float winheight, float pixratio)
@@ -117,14 +127,6 @@ void draw()
     parg_uniform_point(U_EYEPOS_LOWPART, &eyepos_lowpart);
     parg_uniform_matrix4f(U_MVP, &mvp);
     parg_uniform1f(U_SEL, app.hover);
-
-    float colors[32 * 3];
-    for (int i = 0; i < 32; i++) {
-        colors[i * 3 + 0] = i / 31.0f;
-        colors[i * 3 + 1] = 0.5;
-        colors[i * 3 + 2] = 1.0 - colors[i * 3 + 0];
-    }
-    parg_uniform3fv("u_colors[0]", 32, colors);
 
     // Bind the index buffer and verts for the circle shape at the origin.
     parg_varray_bind(parg_mesh_index(app.disk));
