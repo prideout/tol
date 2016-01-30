@@ -1,3 +1,4 @@
+#define PAR_BUBBLES_INT int64_t
 #define PAR_BUBBLES_IMPLEMENTATION
 #define PAR_COLOR_IMPLEMENTATION
 
@@ -30,19 +31,19 @@ const double NEAR_DURATION = 0.5;
 const double FAR_DURATION = 3.0;
 
 struct {
-    int nnodes;
+    int64_t nnodes;
     parg_mesh* disk;
     par_bubbles_t* bubbles;
     par_bubbles_t* culled;
     parg_buffer* instances;
-    int hover;
-    int potentially_clicking;
+    int64_t hover;
+    int64_t potentially_clicking;
     double current_time;
     parg_zcam_animation camera_animation;
     float bbwidth;
-    int* tree;
-    int leaf;
-    int maxdepth;
+    int64_t* tree;
+    int64_t leaf;
+    int64_t maxdepth;
 } app = {0};
 
 void cleanup()
@@ -52,17 +53,17 @@ void cleanup()
     free(app.tree);
 }
 
-void generate(int nnodes)
+void generate(int64_t nnodes)
 {
     app.nnodes = nnodes;
 
     // First, generate a random tree.  Square the random parent pointers to make
     // the graph distribution a bit more interesting, and to make it easier for
     // humans to find deep portions of the tree.
-    printf("Generating tree with %d nodes...\n", nnodes);
-    app.tree = malloc(sizeof(int) * nnodes);
+    printf("Generating tree with %lld nodes...\n", nnodes);
+    app.tree = malloc(sizeof(int64_t) * nnodes);
     app.tree[0] = 0;
-    for (int i = 1; i < app.nnodes; i++) {
+    for (int64_t i = 1; i < app.nnodes; i++) {
         float a = (float) rand() / RAND_MAX;
         float b = (float) rand() / RAND_MAX;
         app.tree[i] = i * a * b;
@@ -74,7 +75,7 @@ void generate(int nnodes)
     app.hover = -1;
 
     par_bubbles_get_maxdepth(app.bubbles, &app.maxdepth, &app.leaf);
-    printf("Node %d has depth %d\n", app.leaf, app.maxdepth);
+    printf("Node %lld has depth %lld\n", app.leaf, app.maxdepth);
     parg_zcam_touch();
 
     // Initialize the uniform array.
@@ -161,12 +162,12 @@ void draw()
     // Next, re-populate all per-instance vertex buffer data.
     // This bakes the pan offset into the geometry because it allows
     // adding a double-precision number to a double-precision number.
-    int nbytes = app.culled->count * 5 * sizeof(float);
+    int64_t nbytes = app.culled->count * 5 * sizeof(float);
     float* fdisk = parg_buffer_lock_grow(app.instances, nbytes);
     double const* ddisk = app.culled->xyr;
     float dscale = 1.0f / app.maxdepth;
-    for (int i = 0; i < app.culled->count; i++, fdisk += 5, ddisk += 3) {
-        int id = app.culled->ids[i];
+    for (int64_t i = 0; i < app.culled->count; i++, fdisk += 5, ddisk += 3) {
+        int64_t id = app.culled->ids[i];
         fdisk[0] = ddisk[0] - eyepos.x;
         fdisk[1] = ddisk[1] - eyepos.y;
         fdisk[2] = ddisk[2];
@@ -207,7 +208,7 @@ void dispose()
     cleanup();
 }
 
-static void zoom_to_node(int i, float duration)
+static void zoom_to_node(int64_t i, float duration)
 {
     parg_aar view = parg_zcam_get_rectangle();
     double const* xyr = app.bubbles->xyr + i * 3;
@@ -262,7 +263,7 @@ void input(parg_event evt, float x, float y, float z)
         parg_zcam_grab_update(x, y, z);
         parg_zcam_grab_end();
         if (app.potentially_clicking == 1) {
-            int i = par_bubbles_pick(app.bubbles, p.x, p.y);
+            int64_t i = par_bubbles_pick(app.bubbles, p.x, p.y);
             if (i > -1) {
                 zoom_to_node(i, NEAR_DURATION);
             }
@@ -271,7 +272,7 @@ void input(parg_event evt, float x, float y, float z)
         break;
     case PARG_EVENT_MOVE: {
         app.potentially_clicking = 0;
-        int picked = par_bubbles_pick(app.bubbles, p.x, p.y);
+        int64_t picked = par_bubbles_pick(app.bubbles, p.x, p.y);
         if (picked != app.hover) {
             parg_zcam_touch();
             app.hover = picked;
