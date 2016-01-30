@@ -1,6 +1,5 @@
 ```
-git submodule update --init --recursive
-pip install clint requests biopython
+pip install clint requests biopython flask
 ./tools/create_monolith.py
 ```
 
