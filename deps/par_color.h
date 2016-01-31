@@ -79,7 +79,7 @@ static float par_color__lab_xyz(float x)
 
 static float par_color__xyz_rgb(float r)
 {
-    return 128.0 * (r <= 0.00304 ? 12.92 * r : 1.055 * pow(r, 1.0 / 2.4) - 0.055);
+    return 255.0 * (r <= 0.00304 ? 12.92 * r : 1.055 * pow(r, 1.0 / 2.4) - 0.055);
 }
 
 void par_color_lab_to_rgb(float const* src, float* result)

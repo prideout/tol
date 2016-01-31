@@ -97,31 +97,27 @@ void generate(int32_t nnodes)
 
     // Initialize the uniform array.
     parg_shader_bind(P_SIMPLE);
-    const float a[3] = {150, 0.1, 0.3};
-    const float b[3] = {90, 0.2, 0.5};
-    const float c[3] = {228, 0.2, 0.5};
+    const float a[3] = {170, 0.05, 0.05};
+    const float b[3] = {100, 0.1, 0.2};
+    const float freq = app.maxdepth / 2;
     float colors[32 * 3];
     for (int i = 0; i < 32; i++) {
         float* fresult = colors + i * 3;
-        if (i < 16) {
-            float t = i / 15.0f;
-            par_color_mix_hcl(a, b, fresult, t);
-        } else {
-            float t = (i - 16) / 15.0f;
-            par_color_mix_hcl(b, c, fresult, t);
-        }
+        float t = i / 31.0f;
+        t = 0.5 + 0.5 * sin(freq * t * PAR_PI / 2.0);
+        par_color_mix_hcl(a, b, fresult, t);
         par_color_hcl_to_rgb(fresult, fresult);
     }
     parg_uniform3fv("u_colors[0]", 32, colors);
-    parg_state_clearcolor((Vector4){
-        0.5 * colors[0], 0.5 * colors[2], 0.5 * colors[1], 1.0});
+    float* bkgd = colors + 1 * 3;
+    parg_state_clearcolor((Vector4){bkgd[0], bkgd[1], bkgd[2], 1.0});
 }
 
 void init(float winwidth, float winheight, float pixratio)
 {
     parg_state_depthtest(0);
     parg_state_cullfaces(1);
-    parg_state_blending(1);
+    parg_state_blending(0);
     parg_shader_load_from_asset(SHADER_SIMPLE);
     parg_zcam_init(WORLDWIDTH, WORLDWIDTH, FOVY);
     generate(2e4);

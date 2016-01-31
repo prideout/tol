@@ -12,7 +12,7 @@ varying float v_rim;
 varying vec3 v_fill;
 varying vec3 v_background;
 const float STROKEW = 0.98;
-const vec3 STROKEC = vec3(0);
+const vec3 STROKEC = vec3(0.2);
 
 -- vertex
 
