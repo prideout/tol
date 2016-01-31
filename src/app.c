@@ -136,12 +136,11 @@ void init(float winwidth, float winheight, float pixratio)
 
 void draw()
 {
-    Matrix4 mvp;
-    Point3 eyepos, eyepos_lowpart;
-    DPoint3 camera = parg_zcam_highprec(&mvp, &eyepos_lowpart, &eyepos);
+    Matrix4 vp;
+    DPoint3 camera = parg_zcam_get_camera(&vp);
     parg_draw_clear();
     parg_shader_bind(P_SIMPLE);
-    parg_uniform_matrix4f(U_MVP, &mvp);
+    parg_uniform_matrix4f(U_MVP, &vp);
     parg_uniform1f(U_SEL, app.hover);
 
     // Bake the view transform into the disk VBO.
@@ -167,7 +166,7 @@ void draw()
 
     // Perform frustum culling and min-size culling.
     double aabb[4];
-    parg_zcam_get_viewportd(aabb);
+    parg_zcam_get_viewport(aabb);
     double minradius = 2.0 * (aabb[2] - aabb[0]) / app.bbwidth;
     app.culled = par_bubbles_cull(app.bubbles, aabb, minradius, app.culled);
 
@@ -196,7 +195,7 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
 {
     app.current_time = seconds;
     app.bbwidth = winwidth;
-    parg_zcam_tick(winwidth / winheight, seconds);
+    parg_zcam_set_aspect(winwidth / winheight);
     return parg_zcam_has_moved();
 }
 
@@ -216,7 +215,7 @@ static void zoom_to_node(int32_t i)
     printf("Zooming to depth %d.\n", par_bubbles_get_depth(app.bubbles, i));
     double const* xyr = app.bubbles->xyr + i * 3;
     double frame[] = { xyr[0], xyr[1], xyr[2] * 2.25 };
-    parg_zcam_frame_position(frame);
+    parg_zcam_set_viewport(frame);
 }
 
 void message(const char* msg)

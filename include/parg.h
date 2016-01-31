@@ -201,24 +201,16 @@ void parg_draw_points(int npoints);
 // MAP CAMERA
 
 void parg_zcam_init(float world_width, float world_height, float fovy);
-void parg_zcam_tick(float window_aspect, float seconds);
+void parg_zcam_set_aspect(float window_aspect);
 DPoint3 parg_zcam_to_world(float winx, float winy);
-float parg_zcam_get_magnification();
-void parg_zcam_get_viewport(float* lbrt);
-void parg_zcam_get_viewportd(double* lbrt);
-parg_aar parg_zcam_get_rectangle();
+void parg_zcam_get_viewport(double* lbrt);
 void parg_zcam_grab_begin(float winx, float winy);
 void parg_zcam_grab_update(float winx, float winy, float scrolldelta);
 void parg_zcam_grab_end();
-Point3 parg_zcam_matrices(Matrix4* proj, Matrix4* view);
-DPoint3 parg_zcam_dmatrices(DMatrix4* proj, DMatrix4* view);
-DPoint3 parg_zcam_highprec(Matrix4* vp, Point3* eyepos_lo, Point3* eyepos_hi);
+DPoint3 parg_zcam_get_camera(Matrix4* vp);
 int parg_zcam_has_moved();
 void parg_zcam_touch();
-void parg_zcam_set_position(double x, double y, double z);
-void parg_zcam_frame_position(double const* xyw);
-void parg_zcam_blend(
-    double const* cameraA, double const* cameraB, double* result, double t);
+void parg_zcam_set_viewport(double const* xyw);
 
 typedef struct {
     double start_view[3];
