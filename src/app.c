@@ -2,6 +2,7 @@
 #define PAR_BUBBLES_IMPLEMENTATION
 #define PAR_COLOR_IMPLEMENTATION
 
+#include <tol.h>
 #include <parg.h>
 #include <parwin.h>
 #include <stdio.h>
@@ -55,6 +56,9 @@ void cleanup()
 
 void generate(int64_t nnodes)
 {
+    tol_monolith_t* monolith = tol_load_monolith("monolith.0000.txt");
+    tol_free_monolith(monolith);
+
     app.nnodes = nnodes;
 
     // First, generate a random tree.  Square the random parent pointers to make

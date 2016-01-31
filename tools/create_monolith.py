@@ -11,7 +11,7 @@ Crandall KA, Deng J, Drew BT, Gazis R, Gude K, Hibbett DS, Katz LA,
 Laughinghouse IV HD, McTavish EJ, Midford PE, Owen CL, Ree RH, Rees JA, Soltis
 DE, Williams T, Cranston KA (2015) Synthesis of phylogeny and taxonomy into a
 comprehensive tree of life. Proceedings of the National Academy of Sciences of
-the United States of America 112(41): 12764–12769.
+the United States of America 112(41): 12764-12769.
 """
 
 import urlparse
@@ -32,7 +32,6 @@ parser = argparse.ArgumentParser(description=__doc__.strip())
 parser.add_argument('-url',
                     default=DEFAULT_URL,
                     help="default: %(default)s")
-
 
 def download_file(url, filename):
     response = requests.get(url, stream=True)
@@ -62,7 +61,7 @@ if __name__ == '__main__':
                 puts(item)
                 tar.extract(item)
     elif filename.endswith('.gz'):
-        puts(colored.red('Unzipping is not implemented.'))
+        os.system('gunzip -k ' + filename)
     filename = os.path.splitext(filename)[0]
 
     # Parse it

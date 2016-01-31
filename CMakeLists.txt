@@ -89,16 +89,9 @@ foreach(SRCFILE ${JSCPP})
 endforeach()
 
 if(EMSCRIPTEN)
-    add_executable(
-        app
-        src/app.c
-        app.glsl
-        app.js)
+    add_executable(app src/app.c app.glsl app.js)
 else()
-    add_executable(
-        app
-        src/app.c
-        app.glsl)
+    add_executable(app src/app.c app.glsl)
 endif()
 add_custom_command(
     OUTPUT app.glsl
