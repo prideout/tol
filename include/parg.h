@@ -210,7 +210,7 @@ void parg_zcam_grab_update(float winx, float winy, float scrolldelta);
 void parg_zcam_grab_end();
 Point3 parg_zcam_matrices(Matrix4* proj, Matrix4* view);
 DPoint3 parg_zcam_dmatrices(DMatrix4* proj, DMatrix4* view);
-void parg_zcam_highprec(Matrix4* vp, Point3* eyepos_lo, Point3* eyepos_hi);
+DPoint3 parg_zcam_highprec(Matrix4* vp, Point3* eyepos_lo, Point3* eyepos_hi);
 int parg_zcam_has_moved();
 void parg_zcam_touch();
 void parg_zcam_set_position(double x, double y, double z);

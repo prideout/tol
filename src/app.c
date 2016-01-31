@@ -144,7 +144,7 @@ void draw()
 {
     Matrix4 mvp;
     Point3 eyepos, eyepos_lowpart;
-    parg_zcam_highprec(&mvp, &eyepos_lowpart, &eyepos);
+    DPoint3 camera = parg_zcam_highprec(&mvp, &eyepos_lowpart, &eyepos);
     parg_draw_clear();
     parg_shader_bind(P_SIMPLE);
 

@@ -155,7 +155,7 @@ Point3 parg_zcam_matrices(Matrix4* proj, Matrix4* view)
     return (Point3){_camerapos.x, _camerapos.y, _camerapos.z};
 }
 
-void parg_zcam_highprec(Matrix4* vp, Point3* eyepos_lo, Point3* eyepos_hi)
+DPoint3 parg_zcam_highprec(Matrix4* vp, Point3* eyepos_lo, Point3* eyepos_hi)
 {
     DPoint3 origin = {0, 0, 0};
     DPoint3 target = {0, 0, -1};
@@ -171,6 +171,7 @@ void parg_zcam_highprec(Matrix4* vp, Point3* eyepos_lo, Point3* eyepos_hi)
         *eyepos_lo = P3MakeFromV3(V3MakeFromDV3(difference));
     }
     *eyepos_hi = eyepos;
+    return _camerapos;
 }
 
 int parg_zcam_has_moved()
