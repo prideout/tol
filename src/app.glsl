@@ -24,7 +24,7 @@ void main()
 {
     vec3 cen = a_center.xyz;
     vec3 pos = vec3(a_position.xy * cen.z + cen.xy, 0.0);
-    int depth = int(a_depth * 31.0);
+    int depth = int(mod(a_depth, 32.0));
     v_background = u_colors[depth > 0 ? depth - 1 : 0];
     v_fill = u_colors[depth];
     if (a_center.w == u_sel) {

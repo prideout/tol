@@ -188,14 +188,13 @@ void draw()
     int32_t nbytes = app.culled->count * 5 * sizeof(float);
     float* fdisk = parg_buffer_lock_grow(app.instances, nbytes);
     double const* ddisk = app.culled->xyr;
-    float dscale = 1.0f / app.maxdepth;
     for (int32_t i = 0; i < app.culled->count; i++, fdisk += 5, ddisk += 3) {
         int32_t id = app.culled->ids[i];
         fdisk[0] = (ddisk[0] - camera.x) / camera.z;
         fdisk[1] = (ddisk[1] - camera.y) / camera.z;
         fdisk[2] = ddisk[2];
         fdisk[3] = id;
-        fdisk[4] = par_bubbles_get_depth(app.bubbles, id) * dscale;
+        fdisk[4] = par_bubbles_get_depth(app.bubbles, id);
     }
     parg_buffer_unlock(app.instances);
 
