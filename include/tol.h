@@ -9,7 +9,7 @@
 
 typedef struct {
     uint8_t* data;
-    int32_t nglades;
+    int32_t nclades;
     int32_t* parents;
     char const** labels;
 } tol_monolith_t;

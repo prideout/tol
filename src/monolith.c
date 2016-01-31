@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include <locale.h>
+#include <string.h>
 
 tol_monolith_t* tol_load_monolith(char const* filename)
 {
@@ -16,20 +16,23 @@ tol_monolith_t* tol_load_monolith(char const* filename)
     fread(monolith->data, fsize, 1, file);
     fclose(file);
     monolith->data[fsize] = 0;
-
-    monolith->nglades = 0;
+    monolith->nclades = 0;
     for (long i = 0; i < fsize; i++) {
         if (monolith->data[i] == '\n') {
-            monolith->nglades++;
+            monolith->nclades++;
+            monolith->data[i] = 0;
         }
     }
-
-    setlocale(LC_ALL, "");
-    printf("%'d clades\n", monolith->nglades);
-
-    monolith->parents = TOL_MALLOC(int32_t, monolith->nglades);
-    monolith->labels = TOL_MALLOC(char const*, monolith->nglades);
-
+    monolith->parents = TOL_MALLOC(int32_t, monolith->nclades);
+    monolith->labels = TOL_MALLOC(char const*, monolith->nclades);
+    uint8_t* data = monolith->data;
+    for (long j = 0; j < monolith->nclades; j++) {
+        assert(' ' == data[7]);
+        data[7] = 0;
+        monolith->parents[j] = atoi((const char*) data);
+        monolith->labels[j] = (char const*) (data += 8);
+        data += strlen(monolith->labels[j]) + 1;
+    }
     return monolith;
 }
 

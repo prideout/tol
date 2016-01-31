@@ -1,4 +1,3 @@
-#define PAR_BUBBLES_INT int64_t
 #define PAR_BUBBLES_IMPLEMENTATION
 #define PAR_COLOR_IMPLEMENTATION
 
@@ -7,6 +6,7 @@
 #include <parwin.h>
 #include <stdio.h>
 #include <string.h>
+#include <locale.h>
 #include <par_bubbles.h>
 #include <par_shapes.h>
 #include <par_color.h>
@@ -32,19 +32,20 @@ const double NEAR_DURATION = 0.5;
 const double FAR_DURATION = 3.0;
 
 struct {
-    int64_t nnodes;
+    int32_t nnodes;
     parg_mesh* disk;
     par_bubbles_t* bubbles;
     par_bubbles_t* culled;
     parg_buffer* instances;
-    int64_t hover;
-    int64_t potentially_clicking;
+    int32_t hover;
+    int32_t potentially_clicking;
     double current_time;
     parg_zcam_animation camera_animation;
     float bbwidth;
-    int64_t* tree;
-    int64_t leaf;
-    int64_t maxdepth;
+    int32_t* tree;
+    int32_t leaf;
+    int32_t maxdepth;
+    tol_monolith_t* monolith;
 } app = {0};
 
 void cleanup()
@@ -54,24 +55,34 @@ void cleanup()
     free(app.tree);
 }
 
-void generate(int64_t nnodes)
+void generate(int32_t nnodes)
 {
-    tol_monolith_t* monolith = tol_load_monolith("monolith.0000.txt");
-    tol_free_monolith(monolith);
-
-    app.nnodes = nnodes;
-
-    // First, generate a random tree.  Square the random parent pointers to make
-    // the graph distribution a bit more interesting, and to make it easier for
-    // humans to find deep portions of the tree.
-    printf("Generating tree with %lld nodes...\n", nnodes);
-    app.tree = malloc(sizeof(int64_t) * nnodes);
-    app.tree[0] = 0;
-    for (int64_t i = 1; i < app.nnodes; i++) {
-        float a = (float) rand() / RAND_MAX;
-        float b = (float) rand() / RAND_MAX;
-        app.tree[i] = i * a * b;
+    if (nnodes == 0) {
+        // Load the Tree of Life from a monolithic file if we haven't already.
+        if (!app.monolith) {
+            app.monolith = tol_load_monolith("monolith.0000.txt");
+        }
+        setlocale(LC_ALL, "");
+        printf("Loaded %'d clades.\n", app.monolith->nclades);
+        nnodes = app.monolith->nclades;
+        app.tree = malloc(sizeof(int32_t) * nnodes);
+        for (int32_t i = 0; i < nnodes; i++) {
+            app.tree[i] = app.monolith->parents[i];
+        }
+    } else {
+        // Generate a random tree.  Square the random parent pointers to make
+        // the graph distribution a bit more interesting, and to make it easier
+        // for humans to find deep portions of the tree.
+        printf("Generating tree with %d nodes...\n", nnodes);
+        app.tree = malloc(sizeof(int32_t) * nnodes);
+        app.tree[0] = 0;
+        for (int32_t i = 1; i < nnodes; i++) {
+            float a = (float) rand() / RAND_MAX;
+            float b = (float) rand() / RAND_MAX;
+            app.tree[i] = i * a * b;
+        }
     }
+    app.nnodes = nnodes;
 
     // Perform circle packing.
     puts("Packing circles...");
@@ -79,7 +90,7 @@ void generate(int64_t nnodes)
     app.hover = -1;
 
     par_bubbles_get_maxdepth(app.bubbles, &app.maxdepth, &app.leaf);
-    printf("Node %lld has depth %lld\n", app.leaf, app.maxdepth);
+    printf("Node %d has depth %d\n", app.leaf, app.maxdepth);
     parg_zcam_touch();
 
     // Initialize the uniform array.
@@ -166,12 +177,12 @@ void draw()
     // Next, re-populate all per-instance vertex buffer data.
     // This bakes the pan offset into the geometry because it allows
     // adding a double-precision number to a double-precision number.
-    int64_t nbytes = app.culled->count * 5 * sizeof(float);
+    int32_t nbytes = app.culled->count * 5 * sizeof(float);
     float* fdisk = parg_buffer_lock_grow(app.instances, nbytes);
     double const* ddisk = app.culled->xyr;
     float dscale = 1.0f / app.maxdepth;
-    for (int64_t i = 0; i < app.culled->count; i++, fdisk += 5, ddisk += 3) {
-        int64_t id = app.culled->ids[i];
+    for (int32_t i = 0; i < app.culled->count; i++, fdisk += 5, ddisk += 3) {
+        int32_t id = app.culled->ids[i];
         fdisk[0] = ddisk[0] - eyepos.x;
         fdisk[1] = ddisk[1] - eyepos.y;
         fdisk[2] = ddisk[2];
@@ -206,13 +217,14 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
 
 void dispose()
 {
+    tol_free_monolith(app.monolith);
     parg_shader_free(P_SIMPLE);
     parg_mesh_free(app.disk);
     parg_buffer_free(app.instances);
     cleanup();
 }
 
-static void zoom_to_node(int64_t i, float duration)
+static void zoom_to_node(int32_t i, float duration)
 {
     parg_aar view = parg_zcam_get_rectangle();
     double const* xyr = app.bubbles->xyr + i * 3;
@@ -228,7 +240,9 @@ static void zoom_to_node(int64_t i, float duration)
 
 void message(const char* msg)
 {
-    if (!strcmp(msg, "20K")) {
+    if (!strcmp(msg, "0")) {
+        generate(0);
+    } else if (!strcmp(msg, "20K")) {
         generate(2e4);
     } else if (!strcmp(msg, "200K")) {
         generate(2e5);
@@ -247,7 +261,9 @@ void input(parg_event evt, float x, float y, float z)
     int key = (char) x;
     switch (evt) {
     case PARG_EVENT_KEYPRESS:
-        if (key == '1') {
+        if (key == '0') {
+            message("0");
+        } else if (key == '1') {
             message("20K");
         } else if (key == '2') {
             message("200K");
@@ -267,7 +283,7 @@ void input(parg_event evt, float x, float y, float z)
         parg_zcam_grab_update(x, y, z);
         parg_zcam_grab_end();
         if (app.potentially_clicking == 1) {
-            int64_t i = par_bubbles_pick(app.bubbles, p.x, p.y);
+            int32_t i = par_bubbles_pick(app.bubbles, p.x, p.y);
             if (i > -1) {
                 zoom_to_node(i, NEAR_DURATION);
             }
@@ -276,7 +292,7 @@ void input(parg_event evt, float x, float y, float z)
         break;
     case PARG_EVENT_MOVE: {
         app.potentially_clicking = 0;
-        int64_t picked = par_bubbles_pick(app.bubbles, p.x, p.y);
+        int32_t picked = par_bubbles_pick(app.bubbles, p.x, p.y);
         if (picked != app.hover) {
             parg_zcam_touch();
             app.hover = picked;
