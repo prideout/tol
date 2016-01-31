@@ -5,8 +5,6 @@
 
 uniform mat4 u_mvp;
 uniform float u_sel;
-uniform vec3 u_eyepos;
-uniform vec3 u_eyepos_lowpart;
 uniform vec3 u_colors[32];
 varying float v_rim;
 varying vec3 v_fill;

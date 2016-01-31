@@ -17,8 +17,6 @@
     F(A_CENTER, "a_center")     \
     F(A_DEPTH, "a_depth")       \
     F(U_MVP, "u_mvp")           \
-    F(U_EYEPOS, "u_eyepos")     \
-    F(U_EYEPOS_LOWPART, "u_eyepos_lowpart") \
     F(U_SEL, "u_sel");
 
 TOKEN_TABLE(PARG_TOKEN_DECLARE);
@@ -146,12 +144,6 @@ void draw()
     DPoint3 camera = parg_zcam_highprec(&mvp, &eyepos_lowpart, &eyepos);
     parg_draw_clear();
     parg_shader_bind(P_SIMPLE);
-
-    // For the best possible precision, we bake the pan offset into the
-    // geometry, so there's no need to transform X and Y in the shader.
-    Point3 eyez = {0, 0, eyepos.z};
-    parg_uniform_point(U_EYEPOS, &eyez);
-    parg_uniform_point(U_EYEPOS_LOWPART, &eyepos_lowpart);
     parg_uniform_matrix4f(U_MVP, &mvp);
     parg_uniform1f(U_SEL, app.hover);
 
