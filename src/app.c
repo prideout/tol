@@ -33,9 +33,12 @@ const double FAR_DURATION = 3.0;
 
 struct {
     int32_t nnodes;
-    parg_mesh* disk;
     par_bubbles_t* bubbles;
     par_bubbles_t* culled;
+    tol_monolith_t* monolith;
+    parg_mesh* disk_mesh;
+    par_shapes_mesh* disk_unit;
+    par_shapes_mesh* disk_shape;
     parg_buffer* instances;
     int32_t hover;
     int32_t potentially_clicking;
@@ -45,9 +48,6 @@ struct {
     int32_t* tree;
     int32_t leaf;
     int32_t maxdepth;
-    tol_monolith_t* monolith;
-    par_shapes_mesh* disk_template;
-    par_shapes_mesh* disk_clone;
 } app = {0};
 
 void cleanup()
@@ -126,16 +126,16 @@ void init(float winwidth, float winheight, float pixratio)
     parg_zcam_init(WORLDWIDTH, WORLDWIDTH, FOVY);
     generate(2e4);
 
-    // Create disk_template shape.
+    // Create disk_unit shape.
     float normal[3] = {0, 0, 1};
     float center[3] = {0, 0, 1};
-    app.disk_template = par_shapes_create_disk(1.0, 64, center, normal);
-    app.disk_template->points[2] = 0;
-    app.disk_clone = par_shapes_create_disk(1.0, 64, center, normal);
-    app.disk_clone->points[2] = 0;
+    app.disk_unit = par_shapes_create_disk(1.0, 64, center, normal);
+    app.disk_unit->points[2] = 0;
+    app.disk_shape = par_shapes_create_disk(1.0, 64, center, normal);
+    app.disk_shape->points[2] = 0;
 
-    // Create the vertex buffer for the disk_template shape.
-    app.disk = parg_mesh_from_shape(app.disk_template);
+    // Create the vertex buffer for the disk_unit shape.
+    app.disk_mesh = parg_mesh_from_shape(app.disk_unit);
 
     // Create the vertex buffer with instance-varying data.  We re-populate it
     // on every frame, growing it if necessary.  The starting size doesn't
@@ -160,18 +160,18 @@ void draw()
     parg_uniform1f(U_SEL, app.hover);
 
     // Bake the view transform into the disk VBO.
-    float* dst = app.disk_clone->points;
-    float const* src = app.disk_template->points;
-    for (int i = 0; i < app.disk_template->npoints; i++) {
+    float* dst = app.disk_shape->points;
+    float const* src = app.disk_unit->points;
+    for (int i = 0; i < app.disk_unit->npoints; i++) {
         dst[i * 3] = src[i * 3] / camera.z;
         dst[i * 3 + 1] = src[i * 3 + 1] / camera.z;
     }
-    parg_mesh_update_from_shape(app.disk, app.disk_clone);
+    parg_mesh_update_from_shape(app.disk_mesh, app.disk_shape);
 
     // Bind the index buffer and verts for the circle shape at the origin.
-    parg_varray_bind(parg_mesh_index(app.disk));
+    parg_varray_bind(parg_mesh_index(app.disk_mesh));
     parg_varray_enable(
-        parg_mesh_coord(app.disk), A_POSITION, 3, PARG_FLOAT, 0, 0);
+        parg_mesh_coord(app.disk_mesh), A_POSITION, 3, PARG_FLOAT, 0, 0);
 
     // Bind the vertex buffer that contains all once-per-instance attributes.
     int stride = 5 * sizeof(float), offset = 4 * sizeof(float);
@@ -205,7 +205,7 @@ void draw()
 
     // Finally, draw all triangles in one fell swoop.
     parg_draw_instanced_triangles_u16(
-        0, parg_mesh_ntriangles(app.disk), app.culled->count);
+        0, parg_mesh_ntriangles(app.disk_mesh), app.culled->count);
 }
 
 int tick(float winwidth, float winheight, float pixratio, float seconds)
@@ -231,10 +231,10 @@ void dispose()
 {
     tol_free_monolith(app.monolith);
     parg_shader_free(P_SIMPLE);
-    parg_mesh_free(app.disk);
+    parg_mesh_free(app.disk_mesh);
     parg_buffer_free(app.instances);
-    par_shapes_free_mesh(app.disk_template);
-    par_shapes_free_mesh(app.disk_clone);
+    par_shapes_free_mesh(app.disk_unit);
+    par_shapes_free_mesh(app.disk_shape);
     cleanup();
 }
 
