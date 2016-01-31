@@ -31,19 +31,7 @@ void main()
         v_fill.rb = v_fill.rb * 0.8;
     }
     v_rim = a_position.z;
-
-    #ifdef SINGLE_PRECISION
-        pos -= u_eyepos;
-    #else
-        vec3 poslow = vec3(0);
-        vec3 t1 = poslow - u_eyepos_lowpart;
-        vec3 e = t1 - poslow;
-        vec3 t2 = ((-u_eyepos_lowpart - e) + (poslow - (t1 - e))) + pos - u_eyepos;
-        vec3 high_delta = t1 + t2;
-        vec3 low_delta = t2 - (high_delta - t1);
-        pos = high_delta + low_delta;
-    #endif
-
+    pos.z = -1.0;
     gl_Position = u_mvp * vec4(pos, 1.0);
 }
 

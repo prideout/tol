@@ -46,6 +46,8 @@ struct {
     int32_t leaf;
     int32_t maxdepth;
     tol_monolith_t* monolith;
+    par_shapes_mesh* disk_template;
+    par_shapes_mesh* disk_clone;
 } app = {0};
 
 void cleanup()
@@ -124,15 +126,16 @@ void init(float winwidth, float winheight, float pixratio)
     parg_zcam_init(WORLDWIDTH, WORLDWIDTH, FOVY);
     generate(2e4);
 
-    // Create template shape.
+    // Create disk_template shape.
     float normal[3] = {0, 0, 1};
     float center[3] = {0, 0, 1};
-    par_shapes_mesh* template = par_shapes_create_disk(1.0, 64, center, normal);
-    template->points[2] = 0;
+    app.disk_template = par_shapes_create_disk(1.0, 64, center, normal);
+    app.disk_template->points[2] = 0;
+    app.disk_clone = par_shapes_create_disk(1.0, 64, center, normal);
+    app.disk_clone->points[2] = 0;
 
-    // Create the vertex buffer for the template shape.
-    app.disk = parg_mesh_from_shape(template);
-    par_shapes_free_mesh(template);
+    // Create the vertex buffer for the disk_template shape.
+    app.disk = parg_mesh_from_shape(app.disk_template);
 
     // Create the vertex buffer with instance-varying data.  We re-populate it
     // on every frame, growing it if necessary.  The starting size doesn't
@@ -155,6 +158,15 @@ void draw()
     parg_uniform_point(U_EYEPOS_LOWPART, &eyepos_lowpart);
     parg_uniform_matrix4f(U_MVP, &mvp);
     parg_uniform1f(U_SEL, app.hover);
+
+    // Bake the view transform into the disk VBO.
+    float* dst = app.disk_clone->points;
+    float const* src = app.disk_template->points;
+    for (int i = 0; i < app.disk_template->npoints; i++) {
+        dst[i * 3] = src[i * 3] / camera.z;
+        dst[i * 3 + 1] = src[i * 3 + 1] / camera.z;
+    }
+    parg_mesh_update_from_shape(app.disk, app.disk_clone);
 
     // Bind the index buffer and verts for the circle shape at the origin.
     parg_varray_bind(parg_mesh_index(app.disk));
@@ -183,8 +195,8 @@ void draw()
     float dscale = 1.0f / app.maxdepth;
     for (int32_t i = 0; i < app.culled->count; i++, fdisk += 5, ddisk += 3) {
         int32_t id = app.culled->ids[i];
-        fdisk[0] = ddisk[0] - eyepos.x;
-        fdisk[1] = ddisk[1] - eyepos.y;
+        fdisk[0] = (ddisk[0] - camera.x) / camera.z;
+        fdisk[1] = (ddisk[1] - camera.y) / camera.z;
         fdisk[2] = ddisk[2];
         fdisk[3] = id;
         fdisk[4] = par_bubbles_get_depth(app.bubbles, id) * dscale;
@@ -221,6 +233,8 @@ void dispose()
     parg_shader_free(P_SIMPLE);
     parg_mesh_free(app.disk);
     parg_buffer_free(app.instances);
+    par_shapes_free_mesh(app.disk_template);
+    par_shapes_free_mesh(app.disk_clone);
     cleanup();
 }
 
