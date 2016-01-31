@@ -26,8 +26,6 @@ ASSET_TABLE(PARG_TOKEN_DECLARE);
 
 const float FOVY = 32 * PARG_TWOPI / 180;
 const float WORLDWIDTH = 3;
-const double NEAR_DURATION = 0.5;
-const double FAR_DURATION = 3.0;
 
 struct {
     int32_t nnodes;
@@ -41,7 +39,6 @@ struct {
     int32_t hover;
     int32_t potentially_clicking;
     double current_time;
-    parg_zcam_animation camera_animation;
     float bbwidth;
     int32_t* tree;
     int32_t leaf;
@@ -199,17 +196,6 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
 {
     app.current_time = seconds;
     app.bbwidth = winwidth;
-    parg_zcam_animation anim = app.camera_animation;
-    if (anim.start_time > 0) {
-        double duration = anim.final_time - anim.start_time;
-        double t = (app.current_time - anim.start_time) / duration;
-        t = PARG_CLAMP(t, 0, 1);
-        parg_zcam_blend(anim.start_view, anim.final_view, anim.blend_view, t);
-        parg_zcam_frame_position(anim.blend_view);
-        if (t == 1.0) {
-            app.camera_animation.start_time = 0;
-        }
-    }
     parg_zcam_tick(winwidth / winheight, seconds);
     return parg_zcam_has_moved();
 }
@@ -225,18 +211,12 @@ void dispose()
     cleanup();
 }
 
-static void zoom_to_node(int32_t i, float duration)
+static void zoom_to_node(int32_t i)
 {
-    parg_aar view = parg_zcam_get_rectangle();
+    printf("Zooming to depth %d.\n", par_bubbles_get_depth(app.bubbles, i));
     double const* xyr = app.bubbles->xyr + i * 3;
-    app.camera_animation.start_time = app.current_time;
-    app.camera_animation.final_time = app.current_time + duration;
-    app.camera_animation.start_view[0] = parg_aar_centerx(view);
-    app.camera_animation.start_view[1] = parg_aar_centery(view);
-    app.camera_animation.start_view[2] = parg_aar_width(view);
-    app.camera_animation.final_view[0] = xyr[0];
-    app.camera_animation.final_view[1] = xyr[1];
-    app.camera_animation.final_view[2] = xyr[2] * 2.25;
+    double frame[] = { xyr[0], xyr[1], xyr[2] * 2.25 };
+    parg_zcam_frame_position(frame);
 }
 
 void message(const char* msg)
@@ -250,9 +230,9 @@ void message(const char* msg)
     } else if (!strcmp(msg, "2M")) {
         generate(2e6);
     } else if (!strcmp(msg, "L")) {
-        zoom_to_node(app.leaf, FAR_DURATION);
+        zoom_to_node(app.leaf);
     } else if (!strcmp(msg, "H")) {
-        zoom_to_node(0, FAR_DURATION);
+        zoom_to_node(0);
     }
 }
 
@@ -286,7 +266,7 @@ void input(parg_event evt, float x, float y, float z)
         if (app.potentially_clicking == 1) {
             int32_t i = par_bubbles_pick(app.bubbles, p.x, p.y);
             if (i > -1) {
-                zoom_to_node(i, NEAR_DURATION);
+                zoom_to_node(i);
             }
         }
         app.potentially_clicking = 0;
