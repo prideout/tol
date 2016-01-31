@@ -348,6 +348,14 @@ parg_mesh* parg_mesh_from_shape(struct par_shapes_mesh_s const* src)
     return dst;
 }
 
+void parg_mesh_update_from_shape(parg_mesh* dst,
+    struct par_shapes_mesh_s const* src)
+{
+    float* pcoords = (float*) parg_buffer_lock(dst->coords, PARG_WRITE);
+    memcpy(pcoords, src->points, 4 * 3 * src->npoints);
+    parg_buffer_unlock(dst->coords);
+}
+
 void parg_mesh_compute_normals(parg_mesh* mesh)
 {
     par_shapes_mesh m = {0};

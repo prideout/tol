@@ -135,6 +135,8 @@ parg_buffer* parg_mesh_index(parg_mesh* m);
 int parg_mesh_ntriangles(parg_mesh* m);
 void parg_mesh_compute_normals(parg_mesh* m);
 void parg_mesh_send_to_gpu(parg_mesh* m);
+void parg_mesh_update_from_shape(parg_mesh* dst,
+        struct par_shapes_mesh_s const* src);
 
 // SHADERS
 
