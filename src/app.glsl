@@ -9,8 +9,8 @@ uniform vec3 u_colors[32];
 varying float v_rim;
 varying vec3 v_fill;
 varying vec3 v_background;
-const float STROKEW = 0.98;
-const vec3 STROKEC = vec3(0.2);
+const float STROKEW = 0.99;
+const float STROKEB = 0.70;
 
 -- vertex
 
@@ -39,7 +39,7 @@ void main()
 {
     float fw = fwidth(v_rim);
     float e = smoothstep(STROKEW - 2.0 * fw, STROKEW, v_rim);
-    vec3 s = mix(v_fill, STROKEC, e);
+    vec3 s = mix(v_fill, v_background * STROKEB, e);
     e = smoothstep(1.0 - fw, 1.0, v_rim);
     s = mix(s, v_background, e);
     gl_FragColor = vec4(s, 1.0 - e);
