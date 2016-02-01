@@ -901,15 +901,14 @@ static void par_bubbles__cull_local(par_bubbles__t const* src,
     PARFLT const* xform, PARFLT minradius, par_bubbles__t* dst, PARINT parent)
 {
     PARFLT const* xyr = src->xyr + parent * 3;
-    if (xyr[2] < minradius) {
-        return;
-    }
     PARFLT child_xform[3] = {
         xform[0] + xform[2] * xyr[0],
         xform[1] + xform[2] * xyr[1],
         xform[2] * xyr[2]
     };
-    minradius *= xyr[2];
+    if (child_xform[2] < minradius) {
+        return;
+    }
     par_bubbles__copy_disk_local(src, dst, parent, xform);
     xform = child_xform;
     PARINT head = src->graph_heads[parent];
@@ -996,8 +995,8 @@ PARINT par_bubbles__find_local(par_bubbles__t const* src,
 {
     PARFLT const* xyr = src->xyr + parent * 3;
     PARFLT child_xform[3] = {
-        xform[0] + xform[2] * xyr[0],
-        xform[1] + xform[2] * xyr[1],
+        xform[2] * xyr[0] + xform[0],
+        xform[2] * xyr[1] + xform[1],
         xform[2] * xyr[2]
     };
     xform = child_xform;
