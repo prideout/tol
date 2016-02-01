@@ -169,7 +169,14 @@ void draw()
     double aabb[4];
     parg_zcam_get_viewport(aabb);
     int new_root = par_bubbles_find_local(app.bubbles, aabb, app.root);
-    new_root = PAR_MAX(0, new_root);
+    if (app.root == 0 && new_root == -1) {
+        new_root = 0;
+    }
+    if (new_root == -1) {
+        new_root = app.tree[app.root];
+    }
+
+    // If the relative root should be changed, then re-adjust the camera, etc.
     if (app.root != new_root) {
         double xform[3];
         par_bubbles_transform_local(app.bubbles, xform, app.root, new_root);
@@ -278,9 +285,9 @@ void dispose()
 static void zoom_to_node(int32_t i)
 {
     printf("Zooming to depth %d.\n", par_bubbles_get_depth(app.bubbles, i));
-    double const* xyr = app.bubbles->xyr + i * 3;
-    double frame[] = { xyr[0], xyr[1], xyr[2] * 2.25 };
-    parg_zcam_set_viewport(frame);
+    app.root = i;
+    double xyw[] = {0, 0, 2.5};
+    parg_zcam_set_viewport(xyw);
 }
 
 void message(const char* msg)
@@ -330,9 +337,9 @@ void input(parg_event evt, float x, float y, float z)
         if (app.potentially_clicking == 1) {
             int32_t i = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
                 app.minradius);
-            // if (i > -1) {
-            //     zoom_to_node(i);
-            // }
+            if (i > -1) {
+                zoom_to_node(i);
+            }
         }
         app.potentially_clicking = 0;
         break;
@@ -340,10 +347,10 @@ void input(parg_event evt, float x, float y, float z)
         app.potentially_clicking = 0;
         int32_t picked = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
             app.minradius);
-        // if (picked != app.hover) {
-        //     parg_zcam_touch();
-        //     app.hover = picked;
-        // }
+        if (picked != app.hover) {
+            parg_zcam_touch();
+            app.hover = picked;
+        }
         parg_zcam_grab_update(x, y, z);
         break;
     }
