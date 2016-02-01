@@ -12,7 +12,8 @@
 #include <par_color.h>
 
 #define TOKEN_TABLE(F)          \
-    F(P_SIMPLE, "p_simple")     \
+    F(P_DISKS, "p_disks")       \
+    F(P_LINES, "p_lines")       \
     F(A_POSITION, "a_position") \
     F(A_CENTER, "a_center")     \
     F(A_DEPTH, "a_depth")       \
@@ -33,6 +34,7 @@ struct {
     par_bubbles_t* culled;
     tol_monolith_t* monolith;
     parg_mesh* disk_mesh;
+    parg_buffer* crosshairs_buffer;
     par_shapes_mesh* disk_unit;
     par_shapes_mesh* disk_shape;
     parg_buffer* instances;
@@ -50,6 +52,20 @@ void cleanup()
     par_bubbles_free_result(app.bubbles);
     par_bubbles_free_result(app.culled);
     free(app.tree);
+}
+
+static void set_crosshairs(float x, float y)
+{
+    float* plines = parg_buffer_lock(app.crosshairs_buffer, PARG_WRITE);
+    *plines++ = x;
+    *plines++ = -1;
+    *plines++ = x;
+    *plines++ = 1;
+    *plines++ = -1;
+    *plines++ = y;
+    *plines++ = 1;
+    *plines++ = y;
+    parg_buffer_unlock(app.crosshairs_buffer);
 }
 
 void generate(int32_t nnodes)
@@ -91,7 +107,7 @@ void generate(int32_t nnodes)
     parg_zcam_touch();
 
     // Initialize the uniform array.
-    parg_shader_bind(P_SIMPLE);
+    parg_shader_bind(P_DISKS);
     const float a[3] = {170, 0.05, 0.05};
     const float b[3] = {100, 0.1, 0.2};
     const float freq = app.maxdepth / 2;
@@ -115,6 +131,12 @@ void init(float winwidth, float winheight, float pixratio)
     parg_state_blending(0);
     parg_shader_load_from_asset(SHADER_SIMPLE);
     parg_zcam_init(WORLDWIDTH, WORLDWIDTH, FOVY);
+
+    // Create a single-precision buffer of vec2's for the lines.
+    int vstride = sizeof(float) * 2;
+    app.crosshairs_buffer = parg_buffer_alloc(vstride * 4, PARG_GPU_ARRAY);
+
+    // Create the initial bubble diagram.
     generate(2e4);
 
     // Create disk_unit shape.
@@ -139,7 +161,7 @@ void draw()
     Matrix4 vp;
     DPoint3 camera = parg_zcam_get_camera(&vp);
     parg_draw_clear();
-    parg_shader_bind(P_SIMPLE);
+    parg_shader_bind(P_DISKS);
     parg_uniform_matrix4f(U_MVP, &vp);
     parg_uniform1f(U_SEL, app.hover);
 
@@ -186,9 +208,23 @@ void draw()
     }
     parg_buffer_unlock(app.instances);
 
-    // Finally, draw all triangles in one fell swoop.
+    // Draw all triangles in one fell swoop.
     parg_draw_instanced_triangles_u16(
         0, parg_mesh_ntriangles(app.disk_mesh), app.culled->count);
+
+    // Draw crosshairs.
+    double const* pt = app.bubbles->xyr + app.leaf * 3;
+    double x = (pt[0] - camera.x) / camera.z;
+    double y = (pt[1] - camera.y) / camera.z;
+    set_crosshairs(x, y);
+    parg_varray_disable(A_CENTER);
+    parg_varray_disable(A_DEPTH);
+    parg_shader_bind(P_LINES);
+    parg_varray_enable(app.crosshairs_buffer, A_POSITION, 2, PARG_FLOAT, 0, 0);
+    parg_uniform_matrix4f(U_MVP, &vp);
+    parg_state_blending(1);
+    parg_draw_lines(2);
+    parg_state_blending(0);
 }
 
 int tick(float winwidth, float winheight, float pixratio, float seconds)
@@ -202,9 +238,11 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
 void dispose()
 {
     tol_free_monolith(app.monolith);
-    parg_shader_free(P_SIMPLE);
+    parg_shader_free(P_DISKS);
+    parg_shader_free(P_LINES);
     parg_mesh_free(app.disk_mesh);
     parg_buffer_free(app.instances);
+    parg_buffer_free(app.crosshairs_buffer);
     par_shapes_free_mesh(app.disk_unit);
     par_shapes_free_mesh(app.disk_shape);
     cleanup();

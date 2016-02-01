@@ -1,5 +1,6 @@
 
-// @program p_simple, vertex, fragment
+// @program p_disks, disk.vertex, disk.fragment
+// @program p_lines, line.vertex, line.fragment
 
 #extension GL_OES_standard_derivatives : enable
 
@@ -12,7 +13,7 @@ varying vec3 v_background;
 const float STROKEW = 0.99;
 const float STROKEB = 0.70;
 
--- vertex
+-- disk.vertex
 
 attribute vec3 a_position;
 attribute vec4 a_center;
@@ -33,7 +34,7 @@ void main()
     gl_Position = u_mvp * vec4(pos, 1.0);
 }
 
--- fragment
+-- disk.fragment
 
 void main()
 {
@@ -43,4 +44,21 @@ void main()
     e = smoothstep(1.0 - fw, 1.0, v_rim);
     s = mix(s, v_background, e);
     gl_FragColor = vec4(s, 1.0 - e);
+}
+
+-- line.vertex
+
+attribute vec2 a_position;
+
+void main()
+{
+    vec3 pos = vec3(a_position, -1.0);
+    gl_Position = u_mvp * vec4(pos, 1.0);
+}
+
+-- line.fragment
+
+void main()
+{
+    gl_FragColor = vec4(1.0, 1.0, 1.0, 0.3);
 }
