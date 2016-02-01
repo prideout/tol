@@ -41,10 +41,12 @@ struct {
     int32_t hover;
     int32_t potentially_clicking;
     double current_time;
-    float bbwidth;
+    double minradius;
     int32_t* tree;
     int32_t leaf;
     int32_t maxdepth;
+    int32_t root;
+    double crosshairs[2];
 } app = {0};
 
 void cleanup()
@@ -99,11 +101,15 @@ void generate(int32_t nnodes)
 
     // Perform circle packing.
     puts("Packing circles...");
-    app.bubbles = par_bubbles_hpack_circle(app.tree, nnodes, 1.0);
+    app.bubbles = par_bubbles_hpack_local(app.tree, nnodes);
     app.hover = -1;
 
     par_bubbles_get_maxdepth(app.bubbles, &app.maxdepth, &app.leaf);
     printf("Node %d has depth %d\n", app.leaf, app.maxdepth);
+    double xform[2];
+    par_bubbles_transform_local(app.bubbles, xform, app.leaf, app.root);
+    app.crosshairs[0] = xform[0];
+    app.crosshairs[1] = xform[1];
     parg_zcam_touch();
 
     // Initialize the uniform array.
@@ -138,6 +144,7 @@ void init(float winwidth, float winheight, float pixratio)
 
     // Create the initial bubble diagram.
     generate(2e4);
+    app.minradius = 0.001;
 
     // Create disk_unit shape.
     float normal[3] = {0, 0, 1};
@@ -158,6 +165,30 @@ void init(float winwidth, float winheight, float pixratio)
 
 void draw()
 {
+    // Check if the "relative root" should be changed.
+    double aabb[4];
+    parg_zcam_get_viewport(aabb);
+    int new_root = par_bubbles_find_local(app.bubbles, aabb, app.root);
+    new_root = PAR_MAX(0, new_root);
+    if (app.root != new_root) {
+        double xform[3];
+        par_bubbles_transform_local(app.bubbles, xform, app.root, new_root);
+        app.root = new_root;
+        double xyw[3] = {
+            0.5 * (aabb[0] + aabb[2]),
+            0.5 * (aabb[1] + aabb[3]),
+            aabb[2] - aabb[0]
+        };
+        xyw[0] = xyw[0] * xform[2] + xform[0];
+        xyw[1] = xyw[1] * xform[2] + xform[1];
+        xyw[2] = xyw[2] * xform[2];
+        parg_zcam_set_viewport(xyw);
+        par_bubbles_transform_local(app.bubbles, xform, app.leaf, app.root);
+        app.crosshairs[0] = xform[0];
+        app.crosshairs[1] = xform[1];
+    }
+
+    // Obtain the camera position.
     Matrix4 vp;
     DPoint3 camera = parg_zcam_get_camera(&vp);
     parg_draw_clear();
@@ -187,10 +218,8 @@ void draw()
     parg_varray_enable(app.instances, A_DEPTH, 1, PARG_FLOAT, stride, offset);
 
     // Perform frustum culling and min-size culling.
-    double aabb[4];
-    parg_zcam_get_viewport(aabb);
-    double minradius = 2.0 * (aabb[2] - aabb[0]) / app.bbwidth;
-    app.culled = par_bubbles_cull(app.bubbles, aabb, minradius, app.culled);
+    app.culled = par_bubbles_cull_local(app.bubbles, app.root, app.minradius,
+        app.culled);
 
     // Next, re-populate all per-instance vertex buffer data.
     // This bakes the pan offset into the geometry because it allows
@@ -213,9 +242,8 @@ void draw()
         0, parg_mesh_ntriangles(app.disk_mesh), app.culled->count);
 
     // Draw crosshairs.
-    double const* pt = app.bubbles->xyr + app.leaf * 3;
-    double x = (pt[0] - camera.x) / camera.z;
-    double y = (pt[1] - camera.y) / camera.z;
+    double x = (app.crosshairs[0] - camera.x) / camera.z;
+    double y = (app.crosshairs[1] - camera.y) / camera.z;
     set_crosshairs(x, y);
     parg_varray_disable(A_CENTER);
     parg_varray_disable(A_DEPTH);
@@ -230,7 +258,6 @@ void draw()
 int tick(float winwidth, float winheight, float pixratio, float seconds)
 {
     app.current_time = seconds;
-    app.bbwidth = winwidth;
     parg_zcam_set_aspect(winwidth / winheight);
     return parg_zcam_has_moved();
 }
@@ -301,20 +328,22 @@ void input(parg_event evt, float x, float y, float z)
         parg_zcam_grab_update(x, y, z);
         parg_zcam_grab_end();
         if (app.potentially_clicking == 1) {
-            int32_t i = par_bubbles_pick(app.bubbles, p.x, p.y);
-            if (i > -1) {
-                zoom_to_node(i);
-            }
+            int32_t i = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
+                app.minradius);
+            // if (i > -1) {
+            //     zoom_to_node(i);
+            // }
         }
         app.potentially_clicking = 0;
         break;
     case PARG_EVENT_MOVE: {
         app.potentially_clicking = 0;
-        int32_t picked = par_bubbles_pick(app.bubbles, p.x, p.y);
-        if (picked != app.hover) {
-            parg_zcam_touch();
-            app.hover = picked;
-        }
+        int32_t picked = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
+            app.minradius);
+        // if (picked != app.hover) {
+        //     parg_zcam_touch();
+        //     app.hover = picked;
+        // }
         parg_zcam_grab_update(x, y, z);
         break;
     }
