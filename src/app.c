@@ -106,6 +106,7 @@ void generate(int32_t nnodes)
     app.bubbles = par_bubbles_hpack_local(app.tree, nnodes);
     app.hover = -1;
 
+    // Compute crosshairs position by finding the deepest leaf.
     par_bubbles_get_maxdepth(app.bubbles, &app.maxdepth, &app.leaf);
     printf("Node %d has depth %d\n", app.leaf, app.maxdepth);
     double xform[2];
@@ -191,6 +192,8 @@ void draw()
         xyw[1] = xyw[1] * xform[2] + xform[1];
         xyw[2] = xyw[2] * xform[2];
         parg_zcam_set_viewport(xyw);
+
+        // Recompute crosshairs position by transforming the leaf position.
         par_bubbles_transform_local(app.bubbles, xform, app.leaf, app.root);
         app.crosshairs[0] = xform[0];
         app.crosshairs[1] = xform[1];

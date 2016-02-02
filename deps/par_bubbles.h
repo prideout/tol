@@ -1154,6 +1154,19 @@ bool par_bubbles_transform_local(par_bubbles_t const* bubbles, PARFLT* xform,
             return true;
         }
     }
+
+    // If we reach here, then node0 is neither an ancestor nor a descendant, so
+    // do something hacky and return false.  It would be best to find the lowest
+    // common ancestor, but let's just assume the lowest common ancestor is 0.
+    PARFLT xform2[3] = {0, 0, 1};
+    par_bubbles_transform_local(bubbles, xform, node0, 0);
+    par_bubbles_transform_local(bubbles, xform2, 0, node1);
+    xform[0] *= xform2[2];
+    xform[1] *= xform2[2];
+    xform[2] *= xform2[2];
+    xform[0] += xform2[0];
+    xform[1] += xform2[1];
+
     return false;
 }
 
