@@ -3,6 +3,7 @@
 
 #include <tol.h>
 #include <parg.h>
+#include <pa.h>
 #include <parwin.h>
 #include <stdio.h>
 #include <string.h>
@@ -30,6 +31,15 @@ const float FOVY = 32 * PARG_TWOPI / 180;
 const float WORLDWIDTH = 3;
 
 struct {
+    bool active;
+    double start_time;
+    double initial_viewport[4];   // left-bottom-right-top
+    int32_t* root_sequence;       // pliable array of bubble indices
+    int32_t current_root_target;  // index into the sequence
+    double current_root_progress; // number in [0, 1]
+} camera_animation = {0};
+
+struct {
     int32_t nnodes;
     par_bubbles_t* bubbles;
     par_bubbles_t* culled;
@@ -42,7 +52,6 @@ struct {
     int32_t hover;
     int32_t potentially_clicking;
     double current_time;
-    parg_zcam_animation camera_animation;
     double winwidth;
     int32_t* tree;
     int32_t leaf;
@@ -274,28 +283,29 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
 {
     app.current_time = seconds;
     app.winwidth = winwidth;
-    parg_zcam_animation anim = app.camera_animation;
-    if (anim.start_time > 0) {
-        double duration = anim.final_time - anim.start_time;
-        double t = (app.current_time - anim.start_time) / duration;
-        t = PARG_CLAMP(t, 0, 1);
-        parg_zcam_blend(anim.start_view, anim.final_view, anim.blend_view, t);
-        double xform[3];
-        par_bubbles_transform_local(app.bubbles, xform, 0, app.root);
-        anim.blend_view[0] = anim.blend_view[0] * xform[2] + xform[0];
-        anim.blend_view[1] = anim.blend_view[1] * xform[2] + xform[1];
-        anim.blend_view[2] = anim.blend_view[2] * xform[2];
-        parg_zcam_set_viewport(anim.blend_view);
-        if (t == 1.0) {
-            app.camera_animation.start_time = 0;
-        }
-    }
+    // parg_zcam_animation anim = app.camera_animation;
+    // if (anim.start_time > 0) {
+    //     double duration = anim.final_time - anim.start_time;
+    //     double t = (app.current_time - anim.start_time) / duration;
+    //     t = PARG_CLAMP(t, 0, 1);
+    //     parg_zcam_blend(anim.start_view, anim.final_view, anim.blend_view, t);
+    //     double xform[3];
+    //     par_bubbles_transform_local(app.bubbles, xform, 0, app.root);
+    //     anim.blend_view[0] = anim.blend_view[0] * xform[2] + xform[0];
+    //     anim.blend_view[1] = anim.blend_view[1] * xform[2] + xform[1];
+    //     anim.blend_view[2] = anim.blend_view[2] * xform[2];
+    //     parg_zcam_set_viewport(anim.blend_view);
+    //     if (t == 1.0) {
+    //         app.camera_animation.start_time = 0;
+    //     }
+    // }
     parg_zcam_set_aspect(winwidth / winheight);
     return parg_zcam_has_moved();
 }
 
 void dispose()
 {
+    pa_free(camera_animation.root_sequence);
     tol_free_monolith(app.monolith);
     parg_shader_free(P_DISKS);
     parg_shader_free(P_LINES);
@@ -307,11 +317,49 @@ void dispose()
     cleanup();
 }
 
-static void zoom_to_node(int32_t i)
+static void zoom_to_node(int32_t target)
 {
-    printf("Zooming to depth %d.\n", par_bubbles_get_depth(app.bubbles, i));
+    // if (camera_animation.active) {
+    //     return;
+    // }
+
+    printf("Zooming to depth %d.\n", par_bubbles_get_depth(app.bubbles, target));
+    int32_t lca = par_bubbles_lowest_common_ancestor(app.bubbles, app.root, target);
+    printf("Zooming from %d to %d via %d.\n", app.root, target, lca);
     double duration = 1;
-    #if 1
+
+    camera_animation.active = true;
+    parg_zcam_get_viewport(camera_animation.initial_viewport);
+    int32_t node = app.root;
+    while (true) {
+        pa_push(camera_animation.root_sequence, node);
+        printf("%d ", node);
+        if (node == lca) {
+            break;
+        }
+        node = app.tree[node];
+    }
+    node = target;
+    while (true) {
+        if (node == lca) {
+            break;
+        }
+        pa_push(camera_animation.root_sequence, -1);
+        node = app.tree[node];
+    }
+    int nsteps = pa_count(camera_animation.root_sequence) - 1;
+    node = target;
+    while (true) {
+        if (node == lca) {
+            break;
+        }
+        camera_animation.root_sequence[nsteps--] = node;
+        printf("%d ", node);
+        node = app.tree[node];
+    }
+    puts("");
+
+    #if 0
         double lbrt[4];
         parg_zcam_get_viewport(lbrt);
         double xform[3];
@@ -321,7 +369,7 @@ static void zoom_to_node(int32_t i)
         double right = lbrt[2] * xform[2] + xform[0];
         double top = lbrt[3] * xform[2] + xform[1];
         double xyr[3];
-        par_bubbles_transform_local(app.bubbles, xyr, i, 0);
+        par_bubbles_transform_local(app.bubbles, xyr, target, 0);
         app.camera_animation.start_time = app.current_time;
         app.camera_animation.final_time = app.current_time + duration;
         app.camera_animation.start_view[0] = 0.5 * (left + right);
@@ -331,7 +379,7 @@ static void zoom_to_node(int32_t i)
         app.camera_animation.final_view[1] = xyr[1];
         app.camera_animation.final_view[2] = xyr[2] * 2.25;
     #else
-        app.root = i;
+        app.root = target;
         double xyw[] = {0, 0, 2.5};
         parg_zcam_set_viewport(xyw);
     #endif
