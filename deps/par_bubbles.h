@@ -128,6 +128,10 @@ PAR_BUBBLES_INT par_bubbles_get_depth(par_bubbles_t const* bubbles,
 void par_bubbles_compute_aabb_for_node(par_bubbles_t const* bubbles,
     PAR_BUBBLES_INT node, PAR_BUBBLES_FLT* aabb);
 
+// Find the deepest node that is an ancestor of both A and B.  Classic!
+PAR_BUBBLES_INT par_bubbles_lowest_common_ancestor(par_bubbles_t const* bubbles,
+    PAR_BUBBLES_INT node_a, PAR_BUBBLES_INT node_b);
+
 // Relative Coordinate Systems -------------------------------------------------
 
 // Similar to hpack, but maintains precision by storing disk positions within
@@ -863,6 +867,37 @@ void par_bubbles_compute_aabb_for_node(par_bubbles_t const* bubbles,
     aabb[1] = PAR_MIN(xyr[1] - xyr[2], aabb[1]);
     aabb[2] = PAR_MAX(xyr[0] + xyr[2], aabb[2]);
     aabb[3] = PAR_MAX(xyr[1] + xyr[2], aabb[3]);
+}
+
+PARINT par_bubbles_lowest_common_ancestor(par_bubbles_t const* bubbles,
+    PARINT node_a, PARINT node_b)
+{
+    if (node_a == node_b) {
+        return node_a;
+    }
+    par_bubbles__t const* src = (par_bubbles__t const*) bubbles;
+    PARINT depth_a = par_bubbles_get_depth(bubbles, node_a);
+    PARINT* chain_a = PAR_MALLOC(PARINT, depth_a);
+    for (PARINT i = depth_a - 1; i >= 0; i--) {
+        chain_a[i] = node_a;
+        node_a = src->graph_parents[node_a];
+    }
+    PARINT depth_b = par_bubbles_get_depth(bubbles, node_b);
+    PARINT* chain_b = PAR_MALLOC(PARINT, depth_b);
+    for (PARINT i = depth_b - 1; i >= 0; i--) {
+        chain_b[i] = node_b;
+        node_b = src->graph_parents[node_b];
+    }
+    PARINT lca = 0;
+    for (PARINT i = 1; i < PAR_MIN(depth_a, depth_b); i++) {
+        if (chain_a[i] != chain_b[i]) {
+            break;
+        }
+        lca = chain_a[i];
+    }
+    PAR_FREE(chain_a);
+    PAR_FREE(chain_b);
+    return lca;
 }
 
 void par_bubbles_export_local(par_bubbles_t const* bubbles,
