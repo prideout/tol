@@ -212,6 +212,8 @@ DPoint3 parg_zcam_get_camera(Matrix4* vp);
 int parg_zcam_has_moved();
 void parg_zcam_touch();
 void parg_zcam_set_viewport(double const* xyw);
+void parg_zcam_blend(
+    double const* cameraA, double const* cameraB, double* result, double t);
 
 typedef struct {
     double start_view[3];

@@ -1128,6 +1128,9 @@ bool par_bubbles_transform_local(par_bubbles_t const* bubbles, PARFLT* xform,
     xform[0] = 0;
     xform[1] = 0;
     xform[2] = 1;
+    if (node0 == node1) {
+        return true;
+    }
 
     // First try the case where node1 is a descendant of node0
     PARINT head = src->graph_heads[node0];
