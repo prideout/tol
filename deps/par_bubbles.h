@@ -1065,12 +1065,12 @@ PARINT par_bubbles_pick_local(par_bubbles_t const* bubbles, PARFLT x, PARFLT y,
     PARINT depth = par_bubbles_get_depth(bubbles, result);
     PARINT* chain = PAR_MALLOC(PARINT, depth);
     PARINT node = result;
-    for (PARINT i = depth - 1; i >= 0; i--) {
+    for (PARINT i = depth - 1; i >= root; i--) {
         chain[i] = node;
         node = src->graph_parents[node];
     }
     PARFLT radius = 1;
-    for (PARINT i = 1; i < depth; i++) {
+    for (PARINT i = root + 1; i < depth; i++) {
         PARINT node = chain[i];
         radius *= src->xyr[node * 3 + 2];
         if (radius < minradius) {
