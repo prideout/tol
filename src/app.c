@@ -18,7 +18,8 @@
     F(A_CENTER, "a_center")     \
     F(A_DEPTH, "a_depth")       \
     F(U_MVP, "u_mvp")           \
-    F(U_SEL, "u_sel");
+    F(U_SEL, "u_sel");          \
+    F(U_CAMZ, "u_camz");
 
 TOKEN_TABLE(PARG_TOKEN_DECLARE);
 
@@ -47,6 +48,7 @@ struct {
     int32_t maxdepth;
     int32_t root;
     double crosshairs[2];
+    double minradius;
 } app = {0};
 
 void cleanup()
@@ -202,6 +204,7 @@ void draw()
     parg_shader_bind(P_DISKS);
     parg_uniform_matrix4f(U_MVP, &vp);
     parg_uniform1f(U_SEL, app.hover);
+    parg_uniform1f(U_CAMZ, camera.z);
 
     // Bake the view transform into the disk VBO.
     float* dst = app.disk_shape->points;
@@ -225,10 +228,9 @@ void draw()
     parg_varray_enable(app.instances, A_DEPTH, 1, PARG_FLOAT, stride, offset);
 
     // Perform frustum culling and min-size culling.
-    double minradius = 2.0 * (aabb[2] - aabb[0]) / app.winwidth;
-    app.culled = par_bubbles_cull_local(app.bubbles, aabb, minradius,
+    app.minradius = (aabb[2] - aabb[0]) / app.winwidth;
+    app.culled = par_bubbles_cull_local(app.bubbles, aabb, app.minradius,
         app.root, app.culled);
-    printf("%d\n", app.culled->count);
 
     // Next, re-populate all per-instance vertex buffer data.
     // This bakes the pan offset into the geometry because it allows
@@ -338,9 +340,8 @@ void input(parg_event evt, float x, float y, float z)
         parg_zcam_grab_update(x, y, z);
         parg_zcam_grab_end();
         if (app.potentially_clicking == 1) {
-            double minradius = 0; // TODO
             int32_t i = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
-                minradius);
+                app.minradius);
             if (i > -1) {
                 zoom_to_node(i);
             }
@@ -349,9 +350,8 @@ void input(parg_event evt, float x, float y, float z)
         break;
     case PARG_EVENT_MOVE: {
         app.potentially_clicking = 0;
-        double minradius = 0; // TODO
         int32_t picked = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
-            minradius);
+            app.minradius);
         if (picked != app.hover) {
             parg_zcam_touch();
             app.hover = picked;

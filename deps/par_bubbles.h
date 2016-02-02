@@ -906,7 +906,8 @@ static void par_bubbles__copy_disk_local(par_bubbles__t const* src,
 }
 
 static void par_bubbles__cull_local(par_bubbles__t const* src,
-    PARFLT const* xform, PARFLT minradius, par_bubbles__t* dst, PARINT parent)
+    PARFLT const* aabb, PARFLT const* xform, PARFLT minradius,
+    par_bubbles__t* dst, PARINT parent)
 {
     PARFLT const* xyr = src->xyr + parent * 3;
     PARFLT child_xform[3] = {
@@ -914,6 +915,9 @@ static void par_bubbles__cull_local(par_bubbles__t const* src,
         xform[1] + xform[2] * xyr[1],
         xform[2] * xyr[2]
     };
+    if (!par_bubbles_check_aabb(child_xform, aabb)) {
+        return;
+    }
     if (child_xform[2] < minradius) {
         return;
     }
@@ -923,7 +927,7 @@ static void par_bubbles__cull_local(par_bubbles__t const* src,
     PARINT tail = src->graph_tails[parent];
     for (PARINT cindex = head; cindex != tail; cindex++) {
         PARINT child = src->graph_children[cindex];
-        par_bubbles__cull_local(src, xform, minradius, dst, child);
+        par_bubbles__cull_local(src, aabb, xform, minradius, dst, child);
     }
 }
 
@@ -950,7 +954,7 @@ par_bubbles_t* par_bubbles_cull_local(par_bubbles_t const* psrc,
     PARINT tail = src->graph_tails[root];
     for (PARINT cindex = head; cindex != tail; cindex++) {
         PARINT child = src->graph_children[cindex];
-        par_bubbles__cull_local(src, xform, minradius, dst, child);
+        par_bubbles__cull_local(src, aabb, xform, minradius, dst, child);
     }
     return pdst;
 }

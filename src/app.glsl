@@ -6,9 +6,11 @@
 
 uniform mat4 u_mvp;
 uniform float u_sel;
+uniform float u_camz;
 uniform vec3 u_colors[32];
 varying float v_rim;
 varying vec3 v_fill;
+varying float v_alpha;
 varying vec3 v_background;
 const float STROKEW = 0.99;
 const float STROKEB = 0.70;
@@ -30,6 +32,7 @@ void main()
         v_fill.rb = v_fill.rb * 0.8;
     }
     v_rim = a_position.z;
+    v_alpha = smoothstep(0.0, 0.01, cen.z / u_camz);
     pos.z = -1.0;
     gl_Position = u_mvp * vec4(pos, 1.0);
 }
@@ -41,9 +44,9 @@ void main()
     float fw = fwidth(v_rim);
     float e = smoothstep(STROKEW - 2.0 * fw, STROKEW, v_rim);
     vec3 s = mix(v_fill, v_background * STROKEB, e);
-    e = smoothstep(1.0 - fw, 1.0, v_rim);
-    s = mix(s, v_background, e);
-    gl_FragColor = vec4(s, 1.0 - e);
+    float alpha = v_alpha * smoothstep(1.0, 1.0 - fw, v_rim);
+    s = mix(v_background, s, alpha);
+    gl_FragColor = vec4(s, 1.0);
 }
 
 -- line.vertex
