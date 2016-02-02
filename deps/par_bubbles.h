@@ -141,7 +141,8 @@ par_bubbles_t* par_bubbles_hpack_local(PAR_BUBBLES_INT* nodes,
 // In other words, the new root will have radius 1, centered at (0,0).  The
 // minradius is also expressed in this coordinate system.
 par_bubbles_t* par_bubbles_cull_local(par_bubbles_t const* src,
-    PAR_BUBBLES_INT root, PAR_BUBBLES_FLT minradius, par_bubbles_t* dst);
+    PAR_BUBBLES_FLT const* aabb, PAR_BUBBLES_FLT minradius,
+    PAR_BUBBLES_INT root, par_bubbles_t* dst);
 
 // Finds the smallest node in the given bubble diagram that completely encloses
 // the given axis-aligned bounding box (min xy, max xy).  The AABB coordinates
@@ -865,9 +866,9 @@ void par_bubbles_compute_aabb_for_node(par_bubbles_t const* bubbles,
 }
 
 void par_bubbles_export_local(par_bubbles_t const* bubbles,
-    PAR_BUBBLES_INT idx, char const* filename)
+    PAR_BUBBLES_INT root, char const* filename)
 {
-    par_bubbles_t* clone = par_bubbles_cull_local(bubbles, idx, 0, 0);
+    par_bubbles_t* clone = par_bubbles_cull_local(bubbles, 0, 0, root, 0);
     FILE* svgfile = fopen(filename, "wt");
     fprintf(svgfile,
         "<svg viewBox='%f %f %f %f' width='640px' height='640px' "
@@ -927,7 +928,8 @@ static void par_bubbles__cull_local(par_bubbles__t const* src,
 }
 
 par_bubbles_t* par_bubbles_cull_local(par_bubbles_t const* psrc,
-    PAR_BUBBLES_INT root, PAR_BUBBLES_FLT minradius, par_bubbles_t* pdst)
+    PAR_BUBBLES_FLT const* aabb, PAR_BUBBLES_FLT minradius,
+    PAR_BUBBLES_INT root, par_bubbles_t* pdst)
 {
     par_bubbles__t const* src = (par_bubbles__t const*) psrc;
     par_bubbles__t* dst = (par_bubbles__t*) pdst;

@@ -41,7 +41,7 @@ struct {
     int32_t hover;
     int32_t potentially_clicking;
     double current_time;
-    double minradius;
+    double winwidth;
     int32_t* tree;
     int32_t leaf;
     int32_t maxdepth;
@@ -144,7 +144,6 @@ void init(float winwidth, float winheight, float pixratio)
 
     // Create the initial bubble diagram.
     generate(2e4);
-    app.minradius = 0.001;
 
     // Create disk_unit shape.
     float normal[3] = {0, 0, 1};
@@ -193,6 +192,7 @@ void draw()
         par_bubbles_transform_local(app.bubbles, xform, app.leaf, app.root);
         app.crosshairs[0] = xform[0];
         app.crosshairs[1] = xform[1];
+        parg_zcam_get_viewport(aabb);
     }
 
     // Obtain the camera position.
@@ -225,8 +225,10 @@ void draw()
     parg_varray_enable(app.instances, A_DEPTH, 1, PARG_FLOAT, stride, offset);
 
     // Perform frustum culling and min-size culling.
-    app.culled = par_bubbles_cull_local(app.bubbles, app.root, app.minradius,
-        app.culled);
+    double minradius = 2.0 * (aabb[2] - aabb[0]) / app.winwidth;
+    app.culled = par_bubbles_cull_local(app.bubbles, aabb, minradius,
+        app.root, app.culled);
+    printf("%d\n", app.culled->count);
 
     // Next, re-populate all per-instance vertex buffer data.
     // This bakes the pan offset into the geometry because it allows
@@ -265,6 +267,7 @@ void draw()
 int tick(float winwidth, float winheight, float pixratio, float seconds)
 {
     app.current_time = seconds;
+    app.winwidth = winwidth;
     parg_zcam_set_aspect(winwidth / winheight);
     return parg_zcam_has_moved();
 }
@@ -335,8 +338,9 @@ void input(parg_event evt, float x, float y, float z)
         parg_zcam_grab_update(x, y, z);
         parg_zcam_grab_end();
         if (app.potentially_clicking == 1) {
+            double minradius = 0; // TODO
             int32_t i = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
-                app.minradius);
+                minradius);
             if (i > -1) {
                 zoom_to_node(i);
             }
@@ -345,8 +349,9 @@ void input(parg_event evt, float x, float y, float z)
         break;
     case PARG_EVENT_MOVE: {
         app.potentially_clicking = 0;
+        double minradius = 0; // TODO
         int32_t picked = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
-            app.minradius);
+            minradius);
         if (picked != app.hover) {
             parg_zcam_touch();
             app.hover = picked;
