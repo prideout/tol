@@ -34,9 +34,9 @@ struct {
     bool active;
     double start_time;
     double initial_viewport[4];   // left-bottom-right-top
+    double final_viewport[4];     // left-bottom-right-top
     int32_t* root_sequence;       // pliable array of bubble indices
     int32_t current_root_target;  // index into the sequence
-    double current_root_progress; // number in [0, 1]
 } camera_animation = {0};
 
 struct {
@@ -274,26 +274,87 @@ void draw()
     parg_state_blending(0);
 }
 
+static void tick_camera_animation()
+{
+    const double durationPerStep = 0.5;
+    double elapsed = app.current_time - camera_animation.start_time;
+    int32_t const* seq = camera_animation.root_sequence;
+    int32_t nseq = pa_count(seq);
+    if (elapsed >= durationPerStep) {
+        if (++camera_animation.current_root_target >= nseq) {
+            double const* dst_lbrt = camera_animation.final_viewport;
+            double dst_xyw[3] = {
+                0.5 * (dst_lbrt[0] + dst_lbrt[2]),
+                0.5 * (dst_lbrt[1] + dst_lbrt[3]),
+                dst_lbrt[2] - dst_lbrt[0]
+            };
+            app.root = seq[nseq - 1];
+            parg_zcam_set_viewport(dst_xyw);
+            camera_animation.active = false;
+            return;
+        }
+        camera_animation.start_time = app.current_time;
+        elapsed = 0;
+    }
+
+    // Find the "source viewport" in the coordsys of current_root_target.
+    double src_lbrt[4];
+    if (camera_animation.current_root_target == 0) {
+        src_lbrt[0] = camera_animation.initial_viewport[0];
+        src_lbrt[1] = camera_animation.initial_viewport[1];
+        src_lbrt[2] = camera_animation.initial_viewport[2];
+        src_lbrt[3] = camera_animation.initial_viewport[3];
+    } else {
+        double xform[3];
+        par_bubbles_transform_local(app.bubbles,
+            xform, seq[camera_animation.current_root_target - 1],
+            seq[camera_animation.current_root_target]);
+        src_lbrt[0] = -xform[2] + xform[0];
+        src_lbrt[1] = -xform[2] + xform[1];
+        src_lbrt[2] = xform[2] + xform[0];
+        src_lbrt[3] = xform[2] + xform[1];
+    }
+
+    // The "destination viewport" is simply -1,-1,+1,+1 unless we're in the
+    // last phase of animation.
+    double dst_xyw[3] = {0, 0, 2};
+    if (camera_animation.current_root_target == nseq - 1) {
+        double const* dst_lbrt = camera_animation.final_viewport;
+        dst_xyw[0] = 0.5 * (dst_lbrt[0] + dst_lbrt[2]);
+        dst_xyw[1] = 0.5 * (dst_lbrt[1] + dst_lbrt[3]);
+        dst_xyw[2] = dst_lbrt[2] - dst_lbrt[0];
+    }
+
+    // Use Wijk interpolation to compute the desired viewport for this frame.
+    double desired_xyw[3];
+    double src_xyw[3] = {
+        0.5 * (src_lbrt[0] + src_lbrt[2]),
+        0.5 * (src_lbrt[1] + src_lbrt[3]),
+        src_lbrt[2] - src_lbrt[0]
+    };
+    parg_zcam_blend(src_xyw, dst_xyw, desired_xyw, elapsed / durationPerStep);
+
+    // Transform the desired viewport from the coordsys of curr_root_target
+    // to the coordsys of the current app root.
+    double xform[3];
+    par_bubbles_transform_local(app.bubbles, xform,
+        seq[camera_animation.current_root_target], app.root);
+    desired_xyw[0] = desired_xyw[0] * xform[2] + xform[0];
+    desired_xyw[1] = desired_xyw[1] * xform[2] + xform[1];
+    desired_xyw[2] = desired_xyw[2] * xform[2];
+
+    // Finally, set the viewport.  We'll allow the draw function re-adjust the
+    // app root if necessary.
+    parg_zcam_set_viewport(desired_xyw);
+}
+
 int tick(float winwidth, float winheight, float pixratio, float seconds)
 {
     app.current_time = seconds;
     app.winwidth = winwidth;
-    // parg_zcam_animation anim = app.camera_animation;
-    // if (anim.start_time > 0) {
-    //     double duration = anim.final_time - anim.start_time;
-    //     double t = (app.current_time - anim.start_time) / duration;
-    //     t = PARG_CLAMP(t, 0, 1);
-    //     parg_zcam_blend(anim.start_view, anim.final_view, anim.blend_view, t);
-    //     double xform[3];
-    //     par_bubbles_transform_local(app.bubbles, xform, 0, app.root);
-    //     anim.blend_view[0] = anim.blend_view[0] * xform[2] + xform[0];
-    //     anim.blend_view[1] = anim.blend_view[1] * xform[2] + xform[1];
-    //     anim.blend_view[2] = anim.blend_view[2] * xform[2];
-    //     parg_zcam_set_viewport(anim.blend_view);
-    //     if (t == 1.0) {
-    //         app.camera_animation.start_time = 0;
-    //     }
-    // }
+    if (camera_animation.active) {
+        tick_camera_animation();
+    }
     parg_zcam_set_aspect(winwidth / winheight);
     return parg_zcam_has_moved();
 }
@@ -314,21 +375,33 @@ void dispose()
 
 static void zoom_to_node(int32_t target)
 {
-    // if (camera_animation.active) {
-    //     return;
-    // }
+    if (camera_animation.active) {
+        return;
+    }
 
+    // Initialize all members of the animation structure except the sequence.
+    camera_animation.active = true;
+    camera_animation.start_time = app.current_time;
+    camera_animation.current_root_target = 0;
+    parg_zcam_get_viewport(camera_animation.initial_viewport);
+
+    // The zoom destination is a viewport centered at the target node, where the
+    // viewport width is 2.5x the radius of the target node. The root node for
+    // this viewport is called the "target root", and it's an ancestor of the
+    // target node.
     double aabb[4] = {-1.25, -1.25, 1.25, 1.25};
     int32_t target_root = par_bubbles_find_local(app.bubbles, aabb, target);
     target_root = PAR_MAX(0, target_root);
+    int32_t lca = par_bubbles_lowest_common_ancestor(app.bubbles, app.root,
+        target_root);
+    double xform[3];
+    par_bubbles_transform_local(app.bubbles, xform, target, target_root);
+    camera_animation.final_viewport[0] = aabb[0] * xform[2] + xform[0];
+    camera_animation.final_viewport[1] = aabb[1] * xform[2] + xform[1];
+    camera_animation.final_viewport[2] = aabb[2] * xform[2] + xform[0];
+    camera_animation.final_viewport[3] = aabb[3] * xform[2] + xform[1];
 
-    printf("\nApp root is %d, Target node is %d\n", app.root, target);
-    int32_t lca = par_bubbles_lowest_common_ancestor(app.bubbles, app.root, target_root);
-    printf("Animating from %d to %d via %d.\n", app.root, target_root, lca);
-    double duration = 1;
-
-    camera_animation.active = true;
-    parg_zcam_get_viewport(camera_animation.initial_viewport);
+    // Finally, build the root sequence.
     pa_clear(camera_animation.root_sequence);
     int32_t node = app.root;
     while (true) {
@@ -356,36 +429,10 @@ static void zoom_to_node(int32_t target)
         node = app.tree[node];
     }
 
-    printf("Sequence: ");
-    for (int i = 0; i < pa_count(camera_animation.root_sequence); i++) {
-        printf("%d ", camera_animation.root_sequence[i]);
-    }
-    puts("");
-
-    #if 0
-        double lbrt[4];
-        parg_zcam_get_viewport(lbrt);
-        double xform[3];
-        par_bubbles_transform_local(app.bubbles, xform, app.root, 0);
-        double left = lbrt[0] * xform[2] + xform[0];
-        double bottom = lbrt[1] * xform[2] + xform[1];
-        double right = lbrt[2] * xform[2] + xform[0];
-        double top = lbrt[3] * xform[2] + xform[1];
-        double xyr[3];
-        par_bubbles_transform_local(app.bubbles, xyr, target, 0);
-        app.camera_animation.start_time = app.current_time;
-        app.camera_animation.final_time = app.current_time + duration;
-        app.camera_animation.start_view[0] = 0.5 * (left + right);
-        app.camera_animation.start_view[1] = 0.5 * (top + bottom);
-        app.camera_animation.start_view[2] = right - left;
-        app.camera_animation.final_view[0] = xyr[0];
-        app.camera_animation.final_view[1] = xyr[1];
-        app.camera_animation.final_view[2] = xyr[2] * 2.25;
-    #else
-        app.root = target;
-        double xyw[] = {0, 0, 2.5};
-        parg_zcam_set_viewport(xyw);
-    #endif
+    // By design, the last node appears twice.
+    int32_t last = pa_count(camera_animation.root_sequence) - 1;
+    pa_push(camera_animation.root_sequence,
+        camera_animation.root_sequence[last]);
 }
 
 void message(const char* msg)
