@@ -181,12 +181,7 @@ void draw()
     double aabb[4];
     parg_zcam_get_viewport(aabb);
     int new_root = par_bubbles_find_local(app.bubbles, aabb, app.root);
-    if (app.root == 0 && new_root == -1) {
-        new_root = 0;
-    }
-    if (new_root == -1) {
-        new_root = app.tree[app.root];
-    }
+    new_root = PAR_MAX(new_root, 0);
 
     // If the relative root should be changed, then re-adjust the camera, etc.
     if (app.root != new_root) {
@@ -323,23 +318,27 @@ static void zoom_to_node(int32_t target)
     //     return;
     // }
 
-    printf("Zooming to depth %d.\n", par_bubbles_get_depth(app.bubbles, target));
-    int32_t lca = par_bubbles_lowest_common_ancestor(app.bubbles, app.root, target);
-    printf("Zooming from %d to %d via %d.\n", app.root, target, lca);
+    double aabb[4] = {-1.25, -1.25, 1.25, 1.25};
+    int32_t target_root = par_bubbles_find_local(app.bubbles, aabb, target);
+    target_root = PAR_MAX(0, target_root);
+
+    printf("\nApp root is %d, Target node is %d\n", app.root, target);
+    int32_t lca = par_bubbles_lowest_common_ancestor(app.bubbles, app.root, target_root);
+    printf("Animating from %d to %d via %d.\n", app.root, target_root, lca);
     double duration = 1;
 
     camera_animation.active = true;
     parg_zcam_get_viewport(camera_animation.initial_viewport);
+    pa_clear(camera_animation.root_sequence);
     int32_t node = app.root;
     while (true) {
         pa_push(camera_animation.root_sequence, node);
-        printf("%d ", node);
         if (node == lca) {
             break;
         }
         node = app.tree[node];
     }
-    node = target;
+    node = target_root;
     while (true) {
         if (node == lca) {
             break;
@@ -348,14 +347,18 @@ static void zoom_to_node(int32_t target)
         node = app.tree[node];
     }
     int nsteps = pa_count(camera_animation.root_sequence) - 1;
-    node = target;
+    node = target_root;
     while (true) {
         if (node == lca) {
             break;
         }
         camera_animation.root_sequence[nsteps--] = node;
-        printf("%d ", node);
         node = app.tree[node];
+    }
+
+    printf("Sequence: ");
+    for (int i = 0; i < pa_count(camera_animation.root_sequence); i++) {
+        printf("%d ", camera_animation.root_sequence[i]);
     }
     puts("");
 

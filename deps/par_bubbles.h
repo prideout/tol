@@ -1069,13 +1069,34 @@ PARINT par_bubbles__find_local(par_bubbles__t const* src,
 PARINT par_bubbles_find_local(par_bubbles_t const* bubbles, PARFLT const* aabb,
     PARINT root)
 {
+    par_bubbles__t const* src = (par_bubbles__t const*) bubbles;
+
     // Since the aabb is expressed in the coordinate system of the given root,
     // we can do a trivial rejection right away, using the unit circle.
     if (!par_bubbles__disk_encloses_aabb(0, 0, 1, aabb)) {
-        return -1;
+        if (root == 0) {
+            return -1;
+        }
+        PARINT parent = src->graph_parents[root];
+        PARFLT xform[3];
+        par_bubbles_transform_local(bubbles, xform, root, parent);
+        PARFLT width = aabb[2] - aabb[0];
+        PARFLT height = aabb[3] - aabb[1];
+        PARFLT cx = 0.5 * (aabb[0] + aabb[2]);
+        PARFLT cy = 0.5 * (aabb[1] + aabb[3]);
+        width *= xform[2];
+        height *= xform[2];
+        cx = cx * xform[2] + xform[0];
+        cy = cy * xform[2] + xform[1];
+        PARFLT new_aabb[4] = {
+            cx - width * 0.5,
+            cy - height * 0.5,
+            cx + width * 0.5,
+            cy + height * 0.5
+        };
+        return par_bubbles_find_local(bubbles, new_aabb, parent);
     }
 
-    par_bubbles__t const* src = (par_bubbles__t const*) bubbles;
     PARFLT xform[3] = {0, 0, 1};
     PARINT head = src->graph_heads[root];
     PARINT tail = src->graph_tails[root];
