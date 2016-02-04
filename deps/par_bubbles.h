@@ -116,6 +116,10 @@ void par_bubbles_export(par_bubbles_t const* bubbles, char const* filename);
 void par_bubbles_get_children(par_bubbles_t const* bubbles, PAR_BUBBLES_INT idx,
     PAR_BUBBLES_INT** pchildren, PAR_BUBBLES_INT* nchildren);
 
+// Returns the given node's parent, or 0 if it's the root.
+PAR_BUBBLES_INT par_bubbles_get_parent(par_bubbles_t const* bubbles,
+    PAR_BUBBLES_INT idx);
+
 // Finds the height of the tree and returns one of its deepest leaves.
 void par_bubbles_get_maxdepth(par_bubbles_t const* bubbles,
     PAR_BUBBLES_INT* maxdepth, PAR_BUBBLES_INT* leaf);
@@ -817,6 +821,12 @@ void par_bubbles_get_children(par_bubbles_t const* pbubbles, PARINT node,
     par_bubbles__t const* bubbles = (par_bubbles__t const*) pbubbles;
     *pchildren = bubbles->graph_children + bubbles->graph_heads[node];
     *nchildren = bubbles->graph_tails[node] - bubbles->graph_heads[node];
+}
+
+PARINT par_bubbles_get_parent(par_bubbles_t const* pbubbles, PARINT node)
+{
+    par_bubbles__t const* bubbles = (par_bubbles__t const*) pbubbles;
+    return bubbles->graph_parents[node];
 }
 
 void par_bubbles__get_maxdepth(par_bubbles__t const* bubbles, PARINT* maxdepth,

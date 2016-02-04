@@ -431,7 +431,7 @@ static void camera_rig_zoom(int32_t target, bool distant)
         if (node == lca) {
             break;
         }
-        node = app.tree[node];
+        node = par_bubbles_get_parent(app.bubbles, node);
     }
     node = target_root;
     while (true) {
@@ -439,7 +439,7 @@ static void camera_rig_zoom(int32_t target, bool distant)
             break;
         }
         pa_push(camera_animation.root_sequence, -1);
-        node = app.tree[node];
+        node = par_bubbles_get_parent(app.bubbles, node);
     }
     int nsteps = pa_count(camera_animation.root_sequence) - 1;
     node = target_root;
@@ -448,7 +448,7 @@ static void camera_rig_zoom(int32_t target, bool distant)
             break;
         }
         camera_animation.root_sequence[nsteps--] = node;
-        node = app.tree[node];
+        node = par_bubbles_get_parent(app.bubbles, node);
     }
 
     // By design, the last node appears twice.
