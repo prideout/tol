@@ -38,7 +38,8 @@ struct {
     int32_t* root_sequence;       // pliable array of bubble indices
     int32_t current_root_target;  // index into the sequence
     int32_t target_node;
-} camera_animation = {0};
+    par_bubbles_t* bubbles;
+} camrig = {0};
 
 struct {
     int32_t nnodes;
@@ -116,6 +117,7 @@ void generate(int32_t nnodes)
     puts("Packing circles...");
     app.bubbles = par_bubbles_hpack_local(app.tree, nnodes);
     app.hover = -1;
+    camrig.bubbles = app.bubbles;
 
     // Compute crosshairs position by finding the deepest leaf.
     par_bubbles_get_maxdepth(app.bubbles, &app.maxdepth, &app.leaf);
@@ -275,64 +277,71 @@ void draw()
     parg_state_blending(0);
 }
 
-static void camera_rig_tick()
+static void camera_rig_tick(double current_time, int32_t root)
 {
     const double durationPerStep = 0.5;
-    double elapsed = app.current_time - camera_animation.start_time;
-    int32_t const* seq = camera_animation.root_sequence;
+    double elapsed = current_time - camrig.start_time;
+    int32_t const* seq = camrig.root_sequence;
     int32_t nseq = pa_count(seq);
 
     // Check if ready to move to the next phase, or terminate the animation.
     if (elapsed >= durationPerStep) {
-        if (++camera_animation.current_root_target >= nseq) {
-            double const* dst_lbrt = camera_animation.final_viewport;
+        if (++camrig.current_root_target >= nseq) {
+            double const* dst_lbrt = camrig.final_viewport;
             double dst_xyw[3] = {
                 0.5 * (dst_lbrt[0] + dst_lbrt[2]),
                 0.5 * (dst_lbrt[1] + dst_lbrt[3]),
                 dst_lbrt[2] - dst_lbrt[0]
             };
             double xform[3];
-            par_bubbles_transform_local(app.bubbles, xform, seq[nseq - 1],
-                app.root);
+            par_bubbles_transform_local(camrig.bubbles, xform, seq[nseq - 1],
+                root);
             dst_xyw[0] = dst_xyw[0] * xform[2] + xform[0];
             dst_xyw[1] = dst_xyw[1] * xform[2] + xform[1];
             dst_xyw[2] = dst_xyw[2] * xform[2];
             parg_zcam_set_viewport(dst_xyw);
-            camera_animation.active = false;
+            camrig.active = false;
             return;
         }
-        camera_animation.start_time = app.current_time;
+        camrig.start_time = current_time;
         elapsed = 0;
     }
 
     // Compute the position of the crosshairs in the current coordsys.
     double crosshairs[3];
-    int32_t anim_root = seq[camera_animation.current_root_target];
-    par_bubbles_transform_local(app.bubbles, crosshairs,
-        camera_animation.target_node, anim_root);
+    int32_t anim_root = seq[camrig.current_root_target];
+    par_bubbles_transform_local(camrig.bubbles, crosshairs,
+        camrig.target_node, anim_root);
 
     // Find the "source viewport" in the coordsys of current_root_target.
     double src_lbrt[4];
-    if (camera_animation.current_root_target == 0) {
-        src_lbrt[0] = camera_animation.initial_viewport[0];
-        src_lbrt[1] = camera_animation.initial_viewport[1];
-        src_lbrt[2] = camera_animation.initial_viewport[2];
-        src_lbrt[3] = camera_animation.initial_viewport[3];
+    if (camrig.current_root_target == 0) {
+        src_lbrt[0] = camrig.initial_viewport[0];
+        src_lbrt[1] = camrig.initial_viewport[1];
+        src_lbrt[2] = camrig.initial_viewport[2];
+        src_lbrt[3] = camrig.initial_viewport[3];
     } else {
         double xform[3];
-        par_bubbles_transform_local(app.bubbles,
-            xform, seq[camera_animation.current_root_target - 1], anim_root);
+        par_bubbles_transform_local(camrig.bubbles,
+            xform, seq[camrig.current_root_target - 1], anim_root);
+        if (camrig.target_node == 0) {
+            crosshairs[0] = xform[0];
+            crosshairs[1] = xform[1];
+        }
         src_lbrt[0] = -xform[2] + crosshairs[0];
         src_lbrt[1] = -xform[2] + crosshairs[1];
         src_lbrt[2] = xform[2] + crosshairs[0];
         src_lbrt[3] = xform[2] + crosshairs[1];
     }
 
-    // The "destination viewport" is simply centered on the crosshair unless
-    // we're in the last phase of animation.
+    // The "destination viewport" is centered on the crosshair unless
+    // we're in the last phase of animation, or if we're zooming out.
     double dst_xyw[3] = { crosshairs[0], crosshairs[1], 2 };
-    if (camera_animation.current_root_target == nseq - 1) {
-        double const* dst_lbrt = camera_animation.final_viewport;
+    if (camrig.target_node == 0) {
+        dst_xyw[0] = dst_xyw[1] = 0;
+    }
+    if (camrig.current_root_target == nseq - 1) {
+        double const* dst_lbrt = camrig.final_viewport;
         dst_xyw[0] = 0.5 * (dst_lbrt[0] + dst_lbrt[2]);
         dst_xyw[1] = 0.5 * (dst_lbrt[1] + dst_lbrt[3]);
         dst_xyw[2] = dst_lbrt[2] - dst_lbrt[0];
@@ -350,7 +359,7 @@ static void camera_rig_tick()
     // Transform the desired viewport from the coordsys of curr_root_target
     // to the coordsys of the current app root.
     double xform[3];
-    par_bubbles_transform_local(app.bubbles, xform, anim_root, app.root);
+    par_bubbles_transform_local(camrig.bubbles, xform, anim_root, root);
     desired_xyw[0] = desired_xyw[0] * xform[2] + xform[0];
     desired_xyw[1] = desired_xyw[1] * xform[2] + xform[1];
     desired_xyw[2] = desired_xyw[2] * xform[2];
@@ -364,8 +373,8 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
 {
     app.current_time = seconds;
     app.winwidth = winwidth;
-    if (camera_animation.active) {
-        camera_rig_tick();
+    if (camrig.active) {
+        camera_rig_tick(app.current_time, app.root);
     }
     parg_zcam_set_aspect(winwidth / winheight);
     return parg_zcam_has_moved();
@@ -373,7 +382,7 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
 
 void dispose()
 {
-    pa_free(camera_animation.root_sequence);
+    pa_free(camrig.root_sequence);
     tol_free_monolith(app.monolith);
     parg_shader_free(P_DISKS);
     parg_shader_free(P_LINES);
@@ -385,76 +394,77 @@ void dispose()
     cleanup();
 }
 
-static void camera_rig_zoom(int32_t target, bool distant)
+static void camera_rig_zoom(double current_time, int32_t root, int32_t target,
+    bool distant)
 {
-    if (camera_animation.active) {
+    if (camrig.active) {
         return;
     }
 
     // Initialize all members of the animation structure except the sequence.
-    camera_animation.active = true;
-    camera_animation.start_time = app.current_time;
-    camera_animation.current_root_target = 0;
-    camera_animation.target_node = target;
-    parg_zcam_get_viewport(camera_animation.initial_viewport);
+    camrig.active = true;
+    camrig.start_time = current_time;
+    camrig.current_root_target = 0;
+    camrig.target_node = target;
+    parg_zcam_get_viewport(camrig.initial_viewport);
 
     // The zoom destination is a viewport centered at the target node, where the
     // viewport width is 2.5x the radius of the target node. The root node for
     // this viewport is called the "target root", and it's an ancestor of the
     // target node.
     double aabb[4] = {-1.25, -1.25, 1.25, 1.25};
-    int32_t target_root = par_bubbles_find_local(app.bubbles, aabb, target);
+    int32_t target_root = par_bubbles_find_local(camrig.bubbles, aabb, target);
     target_root = PAR_MAX(0, target_root);
-    int32_t lca = par_bubbles_lowest_common_ancestor(app.bubbles, app.root,
+    int32_t lca = par_bubbles_lowest_common_ancestor(camrig.bubbles, root,
         target_root);
     double xform[3];
-    par_bubbles_transform_local(app.bubbles, xform, target, target_root);
-    camera_animation.final_viewport[0] = aabb[0] * xform[2] + xform[0];
-    camera_animation.final_viewport[1] = aabb[1] * xform[2] + xform[1];
-    camera_animation.final_viewport[2] = aabb[2] * xform[2] + xform[0];
-    camera_animation.final_viewport[3] = aabb[3] * xform[2] + xform[1];
+    par_bubbles_transform_local(camrig.bubbles, xform, target, target_root);
+    camrig.final_viewport[0] = aabb[0] * xform[2] + xform[0];
+    camrig.final_viewport[1] = aabb[1] * xform[2] + xform[1];
+    camrig.final_viewport[2] = aabb[2] * xform[2] + xform[0];
+    camrig.final_viewport[3] = aabb[3] * xform[2] + xform[1];
 
     // Finally, build the root sequence.
-    pa_clear(camera_animation.root_sequence);
+    pa_clear(camrig.root_sequence);
     if (!distant) {
-        par_bubbles_transform_local(app.bubbles, xform, target, app.root);
-        pa_push(camera_animation.root_sequence, app.root);
-        camera_animation.final_viewport[0] = aabb[0] * xform[2] + xform[0];
-        camera_animation.final_viewport[1] = aabb[1] * xform[2] + xform[1];
-        camera_animation.final_viewport[2] = aabb[2] * xform[2] + xform[0];
-        camera_animation.final_viewport[3] = aabb[3] * xform[2] + xform[1];
+        par_bubbles_transform_local(camrig.bubbles, xform, target, root);
+        pa_push(camrig.root_sequence, root);
+        camrig.final_viewport[0] = aabb[0] * xform[2] + xform[0];
+        camrig.final_viewport[1] = aabb[1] * xform[2] + xform[1];
+        camrig.final_viewport[2] = aabb[2] * xform[2] + xform[0];
+        camrig.final_viewport[3] = aabb[3] * xform[2] + xform[1];
         return;
     }
-    int32_t node = app.root;
+    int32_t node = root;
     while (true) {
-        pa_push(camera_animation.root_sequence, node);
+        pa_push(camrig.root_sequence, node);
         if (node == lca) {
             break;
         }
-        node = par_bubbles_get_parent(app.bubbles, node);
+        node = par_bubbles_get_parent(camrig.bubbles, node);
     }
     node = target_root;
     while (true) {
         if (node == lca) {
             break;
         }
-        pa_push(camera_animation.root_sequence, -1);
-        node = par_bubbles_get_parent(app.bubbles, node);
+        pa_push(camrig.root_sequence, -1);
+        node = par_bubbles_get_parent(camrig.bubbles, node);
     }
-    int nsteps = pa_count(camera_animation.root_sequence) - 1;
+    int nsteps = pa_count(camrig.root_sequence) - 1;
     node = target_root;
     while (true) {
         if (node == lca) {
             break;
         }
-        camera_animation.root_sequence[nsteps--] = node;
-        node = par_bubbles_get_parent(app.bubbles, node);
+        camrig.root_sequence[nsteps--] = node;
+        node = par_bubbles_get_parent(camrig.bubbles, node);
     }
 
     // By design, the last node appears twice.
-    int32_t last = pa_count(camera_animation.root_sequence) - 1;
-    pa_push(camera_animation.root_sequence,
-        camera_animation.root_sequence[last]);
+    int32_t last = pa_count(camrig.root_sequence) - 1;
+    pa_push(camrig.root_sequence,
+        camrig.root_sequence[last]);
 }
 
 void message(const char* msg)
@@ -468,9 +478,9 @@ void message(const char* msg)
     } else if (!strcmp(msg, "2M")) {
         generate(2e6);
     } else if (!strcmp(msg, "L")) {
-        camera_rig_zoom(app.leaf, true);
+        camera_rig_zoom(app.current_time, app.root, app.leaf, true);
     } else if (!strcmp(msg, "H")) {
-        camera_rig_zoom(0, true);
+        camera_rig_zoom(app.current_time, app.root, 0, true);
     }
 }
 
@@ -505,7 +515,7 @@ void input(parg_event evt, float x, float y, float z)
             int32_t i = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
                 app.minradius);
             if (i > -1) {
-                camera_rig_zoom(i, false);
+                camera_rig_zoom(app.current_time, app.root, i, false);
             }
         }
         app.potentially_clicking = 0;
