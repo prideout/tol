@@ -37,6 +37,7 @@ struct {
     double final_viewport[4];     // left-bottom-right-top
     int32_t* root_sequence;       // pliable array of bubble indices
     int32_t current_root_target;  // index into the sequence
+    int32_t target_node;
 } camera_animation = {0};
 
 struct {
@@ -290,7 +291,12 @@ static void camera_rig_tick()
                 0.5 * (dst_lbrt[1] + dst_lbrt[3]),
                 dst_lbrt[2] - dst_lbrt[0]
             };
-            app.root = seq[nseq - 1];
+            double xform[3];
+            par_bubbles_transform_local(app.bubbles, xform, seq[nseq - 1],
+                app.root);
+            dst_xyw[0] = dst_xyw[0] * xform[2] + xform[0];
+            dst_xyw[1] = dst_xyw[1] * xform[2] + xform[1];
+            dst_xyw[2] = dst_xyw[2] * xform[2];
             parg_zcam_set_viewport(dst_xyw);
             camera_animation.active = false;
             return;
@@ -302,7 +308,8 @@ static void camera_rig_tick()
     // Compute the position of the crosshairs in the current coordsys.
     double crosshairs[3];
     int32_t anim_root = seq[camera_animation.current_root_target];
-    par_bubbles_transform_local(app.bubbles, crosshairs, app.leaf, anim_root);
+    par_bubbles_transform_local(app.bubbles, crosshairs,
+        camera_animation.target_node, anim_root);
 
     // Find the "source viewport" in the coordsys of current_root_target.
     double src_lbrt[4];
@@ -388,6 +395,7 @@ static void camera_rig_zoom(int32_t target, bool distant)
     camera_animation.active = true;
     camera_animation.start_time = app.current_time;
     camera_animation.current_root_target = 0;
+    camera_animation.target_node = target;
     parg_zcam_get_viewport(camera_animation.initial_viewport);
 
     // The zoom destination is a viewport centered at the target node, where the
