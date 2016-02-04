@@ -297,6 +297,11 @@ static void tick_camera_animation()
         elapsed = 0;
     }
 
+    // Compute the position of the crosshairs in the current coordsys.
+    double crosshairs[3];
+    int32_t anim_root = seq[camera_animation.current_root_target];
+    par_bubbles_transform_local(app.bubbles, crosshairs, app.leaf, anim_root);
+
     // Find the "source viewport" in the coordsys of current_root_target.
     double src_lbrt[4];
     if (camera_animation.current_root_target == 0) {
@@ -307,17 +312,16 @@ static void tick_camera_animation()
     } else {
         double xform[3];
         par_bubbles_transform_local(app.bubbles,
-            xform, seq[camera_animation.current_root_target - 1],
-            seq[camera_animation.current_root_target]);
-        src_lbrt[0] = -xform[2] + xform[0];
-        src_lbrt[1] = -xform[2] + xform[1];
-        src_lbrt[2] = xform[2] + xform[0];
-        src_lbrt[3] = xform[2] + xform[1];
+            xform, seq[camera_animation.current_root_target - 1], anim_root);
+        src_lbrt[0] = -xform[2] + crosshairs[0];
+        src_lbrt[1] = -xform[2] + crosshairs[1];
+        src_lbrt[2] = xform[2] + crosshairs[0];
+        src_lbrt[3] = xform[2] + crosshairs[1];
     }
 
-    // The "destination viewport" is simply -1,-1,+1,+1 unless we're in the
-    // last phase of animation.
-    double dst_xyw[3] = {0, 0, 2};
+    // The "destination viewport" is simply centered on the crosshair unless
+    // we're in the last phase of animation.
+    double dst_xyw[3] = { crosshairs[0], crosshairs[1], 2 };
     if (camera_animation.current_root_target == nseq - 1) {
         double const* dst_lbrt = camera_animation.final_viewport;
         dst_xyw[0] = 0.5 * (dst_lbrt[0] + dst_lbrt[2]);
@@ -337,8 +341,7 @@ static void tick_camera_animation()
     // Transform the desired viewport from the coordsys of curr_root_target
     // to the coordsys of the current app root.
     double xform[3];
-    par_bubbles_transform_local(app.bubbles, xform,
-        seq[camera_animation.current_root_target], app.root);
+    par_bubbles_transform_local(app.bubbles, xform, anim_root, app.root);
     desired_xyw[0] = desired_xyw[0] * xform[2] + xform[0];
     desired_xyw[1] = desired_xyw[1] * xform[2] + xform[1];
     desired_xyw[2] = desired_xyw[2] * xform[2];
