@@ -274,7 +274,7 @@ void draw()
     parg_state_blending(0);
 }
 
-static void tick_camera_animation()
+static void camera_rig_tick()
 {
     const double durationPerStep = 0.5;
     double elapsed = app.current_time - camera_animation.start_time;
@@ -358,7 +358,7 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
     app.current_time = seconds;
     app.winwidth = winwidth;
     if (camera_animation.active) {
-        tick_camera_animation();
+        camera_rig_tick();
     }
     parg_zcam_set_aspect(winwidth / winheight);
     return parg_zcam_has_moved();
@@ -378,7 +378,7 @@ void dispose()
     cleanup();
 }
 
-static void zoom_to_node(int32_t target, bool distant)
+static void camera_rig_zoom(int32_t target, bool distant)
 {
     if (camera_animation.active) {
         return;
@@ -460,9 +460,9 @@ void message(const char* msg)
     } else if (!strcmp(msg, "2M")) {
         generate(2e6);
     } else if (!strcmp(msg, "L")) {
-        zoom_to_node(app.leaf, true);
+        camera_rig_zoom(app.leaf, true);
     } else if (!strcmp(msg, "H")) {
-        zoom_to_node(0, true);
+        camera_rig_zoom(0, true);
     }
 }
 
@@ -497,7 +497,7 @@ void input(parg_event evt, float x, float y, float z)
             int32_t i = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
                 app.minradius);
             if (i > -1) {
-                zoom_to_node(i, false);
+                camera_rig_zoom(i, false);
             }
         }
         app.potentially_clicking = 0;
