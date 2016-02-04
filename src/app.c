@@ -280,6 +280,8 @@ static void tick_camera_animation()
     double elapsed = app.current_time - camera_animation.start_time;
     int32_t const* seq = camera_animation.root_sequence;
     int32_t nseq = pa_count(seq);
+
+    // Check if ready to move to the next phase, or terminate the animation.
     if (elapsed >= durationPerStep) {
         if (++camera_animation.current_root_target >= nseq) {
             double const* dst_lbrt = camera_animation.final_viewport;
@@ -376,7 +378,7 @@ void dispose()
     cleanup();
 }
 
-static void zoom_to_node(int32_t target)
+static void zoom_to_node(int32_t target, bool distant)
 {
     if (camera_animation.active) {
         return;
@@ -406,6 +408,15 @@ static void zoom_to_node(int32_t target)
 
     // Finally, build the root sequence.
     pa_clear(camera_animation.root_sequence);
+    if (!distant) {
+        par_bubbles_transform_local(app.bubbles, xform, target, app.root);
+        pa_push(camera_animation.root_sequence, app.root);
+        camera_animation.final_viewport[0] = aabb[0] * xform[2] + xform[0];
+        camera_animation.final_viewport[1] = aabb[1] * xform[2] + xform[1];
+        camera_animation.final_viewport[2] = aabb[2] * xform[2] + xform[0];
+        camera_animation.final_viewport[3] = aabb[3] * xform[2] + xform[1];
+        return;
+    }
     int32_t node = app.root;
     while (true) {
         pa_push(camera_animation.root_sequence, node);
@@ -449,9 +460,9 @@ void message(const char* msg)
     } else if (!strcmp(msg, "2M")) {
         generate(2e6);
     } else if (!strcmp(msg, "L")) {
-        zoom_to_node(app.leaf);
+        zoom_to_node(app.leaf, true);
     } else if (!strcmp(msg, "H")) {
-        zoom_to_node(0);
+        zoom_to_node(0, true);
     }
 }
 
@@ -486,7 +497,7 @@ void input(parg_event evt, float x, float y, float z)
             int32_t i = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
                 app.minradius);
             if (i > -1) {
-                zoom_to_node(i);
+                zoom_to_node(i, false);
             }
         }
         app.potentially_clicking = 0;
