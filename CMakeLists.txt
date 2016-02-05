@@ -47,18 +47,19 @@ add_library(parg STATIC ${SRCFILES})
 set(EMCCARGS
     -c
     -std=c99
-    -O3
+    -O1
     -Wall
     -I../include
     -I../deps)
 set(EMCXXARGS
-    -O3
+    -O1
     -std=c++11
     -Wall
     -I../include
     -I../deps)
 set(EMLINKARGS
-    -O3 --memory-init-file 0 --bind
+    --profiling
+    -O1 --memory-init-file 0 --bind
     -s 'MODULARIZE=1'
     -s 'EXPORT_NAME="CreateParg"'
     -s 'NO_FILESYSTEM=1'
