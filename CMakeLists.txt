@@ -67,6 +67,7 @@ set(EMLINKARGS
 
 set(JSSRC ${SRCFILES})
 list(REMOVE_ITEM JSSRC ${JSEXCLUSIONS})
+
 foreach(SRCFILE ${JSSRC})
     get_filename_component(BASENAME ${SRCFILE} NAME_WE)
     set(JSOBJECT ${BASENAME}.js.o)
@@ -77,6 +78,7 @@ foreach(SRCFILE ${JSSRC})
     )
     list(APPEND JSOBJECTS ${JSOBJECT})
 endforeach()
+
 foreach(SRCFILE ${JSCPP})
     get_filename_component(BASENAME ${SRCFILE} NAME_WE)
     set(JSOBJECT ${BASENAME}.js.o)
@@ -89,14 +91,21 @@ foreach(SRCFILE ${JSCPP})
 endforeach()
 
 if(EMSCRIPTEN)
-    add_executable(app src/app.c app.glsl app.js)
+    add_executable(app src/app.c src/camera_rig.c app.glsl app.js)
 else()
-    add_executable(app src/app.c app.glsl)
+    add_executable(app src/app.c src/camera_rig.c app.glsl)
 endif()
+
 add_custom_command(
     OUTPUT app.glsl
     COMMAND cp ../src/app.glsl app.glsl
     DEPENDS src/app.glsl)
+
+add_custom_command(
+    OUTPUT app.js
+    COMMAND emcc -o app.js ${EMLINKARGS} ${JSOBJECTS} app.js.o
+    DEPENDS app.js.o ${JSOBJECTS})
+
 target_link_libraries(
     app
     parg
