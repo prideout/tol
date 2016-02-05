@@ -193,7 +193,6 @@ void par_bubbles_export_local(par_bubbles_t const* bubbles,
 #ifdef __cplusplus
 }
 #endif
-#endif // PAR_BUBBLES_H
 
 // -----------------------------------------------------------------------------
 // END PUBLIC API
@@ -1242,3 +1241,4 @@ bool par_bubbles_transform_local(par_bubbles_t const* bubbles, PARFLT* xform,
 #undef PARINT
 #undef PARFLT
 #endif // PAR_BUBBLES_IMPLEMENTATION
+#endif // PAR_BUBBLES_H
