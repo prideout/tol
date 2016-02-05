@@ -16,11 +16,11 @@
             <main>
                 <nav>
                     <div class="menu">
-                        <button id="colors" class="selected radio">Colors</button>
-                        <button id="elevation" class="radio">Elevation</button>
-                        <button id="normals" class="radio">Normals</button>
-                        <button id="ao" class="radio">Ambient Occlusion</button>
-                        <button id="final" class="radio">Colors &amp; Lighting</button>
+                        <button id="20K">20K</button>
+                        <button id="200K">200K</button>
+                        <button id="2M">2M</button>
+                        <button id="L">Leaf</button>
+                        <button id="H">Head</button>
                     </div>
                 </nav>
                 <article>
@@ -39,7 +39,22 @@
         <script src="parg/app.js"></script>
         <script src="js/parg.js"></script>
         <script>
-            var parg = new PargApp('#canvas3d', 'high');
+            var app = new PargApp('#canvas3d', '');
+            $('#20K').click(function() {
+                app.module.Window.message('20K');
+            });
+            $('#200K').click(function() {
+                app.module.Window.message('200K');
+            });
+            $('#2M').click(function() {
+                app.module.Window.message('2M');
+            });
+            $('#L').click(function() {
+                app.module.Window.message('L');
+            });
+            $('#H').click(function() {
+                app.module.Window.message('H');
+            });
         </script>
     </body>
 </html>
