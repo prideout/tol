@@ -43,14 +43,16 @@ PargApp.prototype.onpod = function(msg, pvalues, nvalues) {
         pod = this.module.HEAPF64.subarray(pvalues, pvalues + nvalues);
         var removals = Object.keys(this.labels).map(parseFloat);
         for (var i = 0; i < nvalues;) {
-            x = pod[i++]; y = -pod[i++] - 0.2; id = pod[i++];
+            x = pod[i++]; y = -pod[i++]; id = pod[i++];
                 minz = pod[i++]; maxz = pod[i++];
                 el = this.labels[id]; idx = removals.indexOf(id);
             if (!el) {
-                this.labels[id] = this.paper.text(x, y, '' + id).attr({
+                el  = this.paper.text(x, y, '' + id).attr({
                     'text-anchor':'middle',
+                    'dominant-baseline':'middle',
                     'font-size':'0.1',
                 });
+                this.labels[id] = el;
             } else {
                 el.attr({'x': x, 'y': y});
             }

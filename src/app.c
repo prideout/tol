@@ -3,6 +3,7 @@
 
 #include <tol.h>
 #include <parg.h>
+#include <pa.h>
 #include <parwin.h>
 #include <stdio.h>
 #include <string.h>
@@ -30,6 +31,22 @@ ASSET_TABLE(PARG_TOKEN_DECLARE);
 const float FOVY = 32 * PARG_TWOPI / 180;
 const float WORLDWIDTH = 3;
 
+typedef struct {
+    double x;
+    double y;
+    double id;
+    double minz;
+    double maxz;
+} label_pod;
+
+typedef struct {
+    double minx;
+    double miny;
+    double maxx;
+    double maxy;
+    double zoom;
+} viewport_pod;
+
 struct {
     int32_t nnodes;
     par_bubbles_t* bubbles;
@@ -50,27 +67,22 @@ struct {
     int32_t root;
     double crosshairs[2];
     double minradius;
+    label_pod* labels;
+    viewport_pod viewport;
 } app = {0};
+
+
+static void send_labels()
+{
+    label_pod* labels = app.labels;
+    parg_window_send("labels", (double*) labels, pa_count(labels) * 5);
+}
 
 void cleanup()
 {
     par_bubbles_free_result(app.bubbles);
     par_bubbles_free_result(app.culled);
     free(app.tree);
-}
-
-static void set_crosshairs(float x, float y)
-{
-    float* plines = parg_buffer_lock(app.crosshairs_buffer, PARG_WRITE);
-    *plines++ = x;
-    *plines++ = -1;
-    *plines++ = x;
-    *plines++ = 1;
-    *plines++ = -1;
-    *plines++ = y;
-    *plines++ = 1;
-    *plines++ = y;
-    parg_buffer_unlock(app.crosshairs_buffer);
 }
 
 void generate(int32_t nnodes)
@@ -253,9 +265,19 @@ void draw()
         0, parg_mesh_ntriangles(app.disk_mesh), app.culled->count);
 
     // Draw crosshairs.
+    #if CROSSHAIRS
     double x = (app.crosshairs[0] - camera.x) / camera.z;
     double y = (app.crosshairs[1] - camera.y) / camera.z;
-    set_crosshairs(x, y);
+    float* plines = parg_buffer_lock(app.crosshairs_buffer, PARG_WRITE);
+    *plines++ = x;
+    *plines++ = -1;
+    *plines++ = x;
+    *plines++ = 1;
+    *plines++ = -1;
+    *plines++ = y;
+    *plines++ = 1;
+    *plines++ = y;
+    parg_buffer_unlock(app.crosshairs_buffer);
     parg_varray_disable(A_CENTER);
     parg_varray_disable(A_DEPTH);
     parg_shader_bind(P_LINES);
@@ -264,6 +286,21 @@ void draw()
     parg_state_blending(1);
     parg_draw_lines(2);
     parg_state_blending(0);
+    #endif
+
+    app.culled = par_bubbles_cull_local(app.bubbles, aabb, app.minradius * 30,
+        app.root, app.culled);
+    if (pa_count(app.labels) < app.culled->count) {
+        pa_add(app.labels, app.culled->count - pa_count(app.labels));
+    }
+    pa___n(app.labels) = app.culled->count;
+    double const* xyr = app.culled->xyr;
+    for (int i = 0; i < app.culled->count; i++, xyr += 3) {
+        app.labels[i].x = xyr[0];
+        app.labels[i].y = xyr[1];
+        app.labels[i].id = app.culled->ids[i];
+    }
+    send_labels();
 }
 
 int tick(float winwidth, float winheight, float pixratio, float seconds)
@@ -272,7 +309,13 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
     app.winwidth = winwidth;
     camera_rig_tick(app.current_time, app.root);
     parg_zcam_set_aspect(winwidth / winheight);
-    return parg_zcam_has_moved();
+    if (parg_zcam_has_moved()) {
+        parg_zcam_get_viewport(&app.viewport.minx);
+        app.viewport.zoom = 0;
+        parg_window_send("viewport", (double*) &app.viewport, 5);
+        return 1;
+    }
+    return 0;
 }
 
 void dispose()
@@ -286,6 +329,7 @@ void dispose()
     parg_buffer_free(app.crosshairs_buffer);
     par_shapes_free_mesh(app.disk_unit);
     par_shapes_free_mesh(app.disk_shape);
+    pa_free(app.labels);
     cleanup();
 }
 

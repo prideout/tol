@@ -22,13 +22,7 @@ extern "C" {
 #define pa___needgrow(a, n) ((a) == 0 || pa___n(a) + (n) >= pa___m(a))
 #define pa___maybegrow(a, n) (pa___needgrow(a, (n)) ? pa___grow(a, n) : 0)
 #define pa___grow(a, n) ((a) = pa___growf((a), (n), sizeof(*(a))))
-
-static void pa_clear(void* arr)
-{
-    if (arr) {
-        pa___n(arr) = 0;
-    }
-}
+#define pa_clear(arr) if (arr) pa___n(arr) = 0;
 
 static void* pa___growf(void* arr, int increment, int itemsize)
 {
