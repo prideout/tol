@@ -335,7 +335,7 @@ void input(parg_event evt, float x, float y, float z)
         parg_zcam_grab_end();
         if (app.potentially_clicking == 1) {
             int32_t i = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
-                app.minradius);
+                0);
             if (i > -1) {
                 camera_rig_zoom(app.current_time, app.root, i, false);
             }
@@ -345,7 +345,7 @@ void input(parg_event evt, float x, float y, float z)
     case PARG_EVENT_MOVE: {
         app.potentially_clicking = 0;
         int32_t picked = par_bubbles_pick_local(app.bubbles, p.x, p.y, app.root,
-            app.minradius);
+            0);
         if (picked != app.hover) {
             parg_zcam_touch();
             app.hover = picked;
