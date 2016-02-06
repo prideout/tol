@@ -1047,6 +1047,28 @@ static bool par_bubbles__disk_encloses_aabb(PAR_BUBBLES_FLT cx,
     return PAR_SQR(x - cx) + PAR_SQR(y - cy) <= r2;
 }
 
+static bool par_bubbles__get_local(par_bubbles__t const* src, PARFLT* xform,
+    PARINT parent, PARINT node);
+
+static bool par_bubbles_transform_parent(par_bubbles__t const* src,
+    PARFLT* xform, PARINT node0)
+{
+    PARINT node1 = src->graph_parents[node0];
+    xform[0] = 0;
+    xform[1] = 0;
+    xform[2] = 1;
+
+    PARINT head = src->graph_heads[node1];
+    PARINT tail = src->graph_tails[node1];
+    for (PARINT cindex = head; cindex != tail; cindex++) {
+        PARINT child = src->graph_children[cindex];
+        if (par_bubbles__get_local(src, xform, child, node0)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 PARINT par_bubbles__find_local(par_bubbles__t const* src,
     PARFLT const* xform, PARFLT const* aabb, PARINT parent)
 {
@@ -1060,18 +1082,26 @@ PARINT par_bubbles__find_local(par_bubbles__t const* src,
     if (!par_bubbles__disk_encloses_aabb(xform[0], xform[1], xform[2], aabb)) {
         return -1;
     }
-    PARINT result = parent;
+    PARFLT maxrad = 0;
     PARINT head = src->graph_heads[parent];
     PARINT tail = src->graph_tails[parent];
     for (PARINT cindex = head; cindex != tail; cindex++) {
         PARINT child = src->graph_children[cindex];
+        PARFLT const* xyr = src->xyr + child * 3;
+        maxrad = PAR_MAX(maxrad, xyr[2]);
+    }
+    PARFLT maxext = PAR_MAX(aabb[2] - aabb[0], aabb[3] - aabb[1]);
+    if (2 * maxrad < maxext) {
+        return parent;
+    }
+    for (PARINT cindex = head; cindex != tail; cindex++) {
+        PARINT child = src->graph_children[cindex];
         PARINT cresult = par_bubbles__find_local(src, xform, aabb, child);
         if (cresult > -1) {
-            result = cresult;
-            break;
+            return cresult;
         }
     }
-    return result;
+    return parent;
 }
 
 // This finds the deepest node that completely encloses the box.
@@ -1086,9 +1116,8 @@ PARINT par_bubbles_find_local(par_bubbles_t const* bubbles, PARFLT const* aabb,
         if (root == 0) {
             return -1;
         }
-        PARINT parent = src->graph_parents[root];
         PARFLT xform[3];
-        par_bubbles_transform_local(bubbles, xform, root, parent);
+        par_bubbles_transform_parent(src, xform, root);
         PARFLT width = aabb[2] - aabb[0];
         PARFLT height = aabb[3] - aabb[1];
         PARFLT cx = 0.5 * (aabb[0] + aabb[2]);
@@ -1103,22 +1132,32 @@ PARINT par_bubbles_find_local(par_bubbles_t const* bubbles, PARFLT const* aabb,
             cx + width * 0.5,
             cy + height * 0.5
         };
+        PARINT parent = src->graph_parents[root];
         return par_bubbles_find_local(bubbles, new_aabb, parent);
     }
 
-    PARFLT xform[3] = {0, 0, 1};
+    PARFLT maxrad = 0;
     PARINT head = src->graph_heads[root];
     PARINT tail = src->graph_tails[root];
-    PARINT result = root;
+    for (PARINT cindex = head; cindex != tail; cindex++) {
+        PARINT child = src->graph_children[cindex];
+        PARFLT const* xyr = src->xyr + child * 3;
+        maxrad = PAR_MAX(maxrad, xyr[2]);
+    }
+    PARFLT maxext = PAR_MAX(aabb[2] - aabb[0], aabb[3] - aabb[1]);
+    if (2 * maxrad < maxext) {
+        return root;
+    }
+
+    PARFLT xform[3] = {0, 0, 1};
     for (PARINT cindex = head; cindex != tail; cindex++) {
         PARINT child = src->graph_children[cindex];
         PARINT cresult = par_bubbles__find_local(src, xform, aabb, child);
         if (cresult > -1) {
-            result = cresult;
-            break;
+            return cresult;
         }
     }
-    return result;
+    return root;
 }
 
 // This could be implemented much more efficiently, but for now it simply
@@ -1195,6 +1234,9 @@ bool par_bubbles_transform_local(par_bubbles_t const* bubbles, PARFLT* xform,
     xform[2] = 1;
     if (node0 == node1) {
         return true;
+    }
+    if (node1 == src->graph_parents[node0]) {
+        return par_bubbles_transform_parent(src, xform, node0);
     }
 
     // First try the case where node1 is a descendant of node0
