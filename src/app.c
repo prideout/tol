@@ -34,9 +34,8 @@ const float WORLDWIDTH = 3;
 typedef struct {
     double x;
     double y;
+    double radius;
     double id;
-    double minz;
-    double maxz;
 } label_pod;
 
 typedef struct {
@@ -75,7 +74,7 @@ struct {
 static void send_labels()
 {
     label_pod* labels = app.labels;
-    parg_window_send("labels", (double*) labels, pa_count(labels) * 5);
+    parg_window_send("labels", (double*) labels, pa_count(labels) * 4);
 }
 
 void cleanup()
@@ -240,7 +239,8 @@ void draw()
     parg_varray_enable(app.instances, A_DEPTH, 1, PARG_FLOAT, stride, offset);
 
     // Perform frustum culling and min-size culling.
-    app.minradius = (aabb[2] - aabb[0]) / app.winwidth;
+    double vpwidth = aabb[2] - aabb[0];
+    app.minradius = vpwidth / app.winwidth;
     app.culled = par_bubbles_cull_local(app.bubbles, aabb, app.minradius,
         app.root, app.culled);
 
@@ -288,17 +288,22 @@ void draw()
     parg_state_blending(0);
     #endif
 
-    app.culled = par_bubbles_cull_local(app.bubbles, aabb, app.minradius * 30,
-        app.root, app.culled);
-    if (pa_count(app.labels) < app.culled->count) {
-        pa_add(app.labels, app.culled->count - pa_count(app.labels));
+    if (!app.labels) {
+        pa_add(app.labels, 16);
     }
-    pa___n(app.labels) = app.culled->count;
+    pa___n(app.labels) = 0;
     double const* xyr = app.culled->xyr;
     for (int i = 0; i < app.culled->count; i++, xyr += 3) {
-        app.labels[i].x = xyr[0];
-        app.labels[i].y = xyr[1];
-        app.labels[i].id = app.culled->ids[i];
+        double screen_radius = xyr[2] / vpwidth;
+        if (screen_radius > 0.1 && screen_radius < 0.8) {
+            label_pod label = {
+                .x = xyr[0],
+                .y = xyr[1],
+                .radius = vpwidth, // TODO move out into a "uniform" :)
+                .id = app.culled->ids[i]
+            };
+            pa_push(app.labels, label);
+        }
     }
     send_labels();
 }

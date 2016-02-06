@@ -38,23 +38,33 @@ var PargApp = function(canvas, args, baseurl, block_interaction, attribs) {
 };
 
 PargApp.prototype.onpod = function(msg, pvalues, nvalues) {
-    var pod, x, y, id, miz, maxz, el, idx;
+    var pod, x, y, radius, id, el, idx, fontsize, strokewidth;
     if (msg == "labels") {
         pod = this.module.HEAPF64.subarray(pvalues, pvalues + nvalues);
         var removals = Object.keys(this.labels).map(parseFloat);
         for (var i = 0; i < nvalues;) {
-            x = pod[i++]; y = -pod[i++]; id = pod[i++];
-                minz = pod[i++]; maxz = pod[i++];
-                el = this.labels[id]; idx = removals.indexOf(id);
+            x = pod[i++];
+            y = -pod[i++];
+            radius = pod[i++];
+            id = pod[i++];
+            el = this.labels[id];
+            idx = removals.indexOf(id);
+            fontsize = (0.05 * radius) + 'px'
+            strokewidth = (0.005 * radius) + 'px';
             if (!el) {
                 el  = this.paper.text(x, y, '' + id).attr({
                     'text-anchor':'middle',
                     'dominant-baseline':'middle',
-                    'font-size':'0.1',
+                    'font-size':fontsize,
+                    'stroke-width':strokewidth,
                 });
                 this.labels[id] = el;
             } else {
-                el.attr({'x': x, 'y': y});
+                el.attr({
+                    'x': x, 'y': y,
+                    'font-size':fontsize,
+                    'stroke-width':strokewidth
+                });
             }
             if (idx > -1) {
                 removals.splice(idx, 1);

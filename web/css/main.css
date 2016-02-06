@@ -185,7 +185,6 @@ svg {
 svg text {
     paint-order: stroke;
     stroke: #444;
-    stroke-width: 0.01px;
     fill: #eee;
     font-family: 'Roboto Condensed', sans-serif;
 }
