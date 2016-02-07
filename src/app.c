@@ -37,13 +37,6 @@ typedef struct {
     double id;
 } label_pod;
 
-typedef struct {
-    double minx;
-    double miny;
-    double maxx;
-    double maxy;
-} viewport_pod;
-
 struct {
     int32_t nnodes;
     par_bubbles_t* bubbles;
@@ -65,7 +58,6 @@ struct {
     double crosshairs[2];
     double minradius;
     label_pod* labels;
-    viewport_pod viewport;
 } app = {0};
 
 
@@ -174,6 +166,10 @@ void init(float winwidth, float winheight, float pixratio)
     // on every frame, growing it if necessary.  The starting size doesn't
     // matter much.
     app.instances = parg_buffer_alloc(512 * 5 * sizeof(float), PARG_GPU_ARRAY);
+
+    // Reserve some space for labels.  It'll grow as needed.
+    pa_add(app.labels, 16);
+    pa___n(app.labels) = 0;
 }
 
 void draw()
@@ -188,7 +184,6 @@ void draw()
     if (app.root != new_root) {
         double xform[3];
         par_bubbles_transform_local(app.bubbles, xform, app.root, new_root);
-        app.root = new_root;
         double xyw[3] = {
             0.5 * (aabb[0] + aabb[2]),
             0.5 * (aabb[1] + aabb[3]),
@@ -198,12 +193,15 @@ void draw()
         xyw[1] = xyw[1] * xform[2] + xform[1];
         xyw[2] = xyw[2] * xform[2];
         parg_zcam_set_viewport(xyw);
+        parg_zcam_get_viewport(aabb);
+        app.root = new_root;
 
         // Recompute crosshairs position by transforming the leaf position.
+        #if CROSSHAIRS
         par_bubbles_transform_local(app.bubbles, xform, app.leaf, app.root);
         app.crosshairs[0] = xform[0];
         app.crosshairs[1] = xform[1];
-        parg_zcam_get_viewport(aabb);
+        #endif
     }
 
     // Obtain the camera position.
@@ -286,19 +284,17 @@ void draw()
     parg_state_blending(0);
     #endif
 
-    if (!app.labels) {
-        pa_add(app.labels, 16);
-    }
+    // Draw labels.
     pa___n(app.labels) = 0;
     double const* xyr = app.culled->xyr;
-    double invw = 1.0 / (app.viewport.maxx - app.viewport.minx);
-    double invh = 1.0 / (app.viewport.maxy - app.viewport.miny);
+    double invw = 1.0 / (aabb[2] - aabb[0]);
+    double invh = 1.0 / (aabb[3] - aabb[1]);
     for (int i = 0; i < app.culled->count; i++, xyr += 3) {
         double screen_radius = xyr[2] / vpwidth;
         if (screen_radius > 0.1 && screen_radius < 0.8) {
             label_pod label = {
-                .x = (xyr[0] - app.viewport.minx) * invw,
-                .y = (xyr[1] - app.viewport.miny) * invh,
+                .x = (xyr[0] - aabb[0]) * invw,
+                .y = (xyr[1] - aabb[1]) * invh,
                 .id = app.culled->ids[i]
             };
             pa_push(app.labels, label);
@@ -313,11 +309,7 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
     app.winwidth = winwidth;
     camera_rig_tick(app.current_time, app.root);
     parg_zcam_set_aspect(winwidth / winheight);
-    if (parg_zcam_has_moved()) {
-        parg_zcam_get_viewport(&app.viewport.minx);
-        return 1;
-    }
-    return 0;
+    return parg_zcam_has_moved();
 }
 
 void dispose()
