@@ -27,7 +27,6 @@ var PargApp = function(canvas, args, baseurl, block_interaction, attribs) {
 
     this.viewBox = [0, -1, 1, 1];
     this.paper = Snap('#hud').attr({'viewBox': this.viewBox});
-
     this.labels = {};
 };
 
@@ -45,16 +44,15 @@ PargApp.prototype.onpod = function(msg, pvalues, nvalues) {
             el = this.labels[id];
             idx = removals.indexOf(id);
             if (!el) {
-                el  = this.paper.text(x, y, '' + id).attr({
+                el  = this.paper.text(0, 0, '' + id).attr({
                     'text-anchor': 'middle',
                     'dominant-baseline': 'middle',
                     'font-size': fontsize,
                     'stroke-width': strokewidth,
                 });
                 this.labels[id] = el;
-            } else {
-                el.attr({ 'x': x, 'y': y });
             }
+            el.transform( 'T' + x + ',' + y);
             if (idx > -1) {
                 removals.splice(idx, 1);
             }
