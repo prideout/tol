@@ -34,7 +34,6 @@ const float WORLDWIDTH = 3;
 typedef struct {
     double x;
     double y;
-    double radius;
     double id;
 } label_pod;
 
@@ -74,7 +73,7 @@ struct {
 static void send_labels()
 {
     label_pod* labels = app.labels;
-    parg_window_send("labels", (double*) labels, pa_count(labels) * 4);
+    parg_window_send("labels", (double*) labels, pa_count(labels) * 3);
 }
 
 void cleanup()
@@ -299,7 +298,6 @@ void draw()
             label_pod label = {
                 .x = xyr[0],
                 .y = xyr[1],
-                .radius = vpwidth, // TODO move out into a "uniform" :)
                 .id = app.culled->ids[i]
             };
             pa_push(app.labels, label);

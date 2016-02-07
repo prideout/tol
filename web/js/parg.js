@@ -38,32 +38,31 @@ var PargApp = function(canvas, args, baseurl, block_interaction, attribs) {
 };
 
 PargApp.prototype.onpod = function(msg, pvalues, nvalues) {
-    var pod, x, y, radius, id, el, idx, fontsize, strokewidth;
+    var pod, x, y, radius, id, el, idx;
     if (msg == "labels") {
         pod = this.module.HEAPF64.subarray(pvalues, pvalues + nvalues);
         var removals = Object.keys(this.labels).map(parseFloat);
+        var fontsize = (0.05 * this.viewBox[2]) + 'px'
+        var strokewidth = (0.005 * this.viewBox[2]) + 'px';
         for (var i = 0; i < nvalues;) {
             x = pod[i++];
             y = -pod[i++];
-            radius = pod[i++];
             id = pod[i++];
             el = this.labels[id];
             idx = removals.indexOf(id);
-            fontsize = (0.05 * radius) + 'px'
-            strokewidth = (0.005 * radius) + 'px';
             if (!el) {
                 el  = this.paper.text(x, y, '' + id).attr({
-                    'text-anchor':'middle',
-                    'dominant-baseline':'middle',
-                    'font-size':fontsize,
-                    'stroke-width':strokewidth,
+                    'text-anchor': 'middle',
+                    'dominant-baseline': 'middle',
+                    'font-size': fontsize,
+                    'stroke-width': strokewidth,
                 });
                 this.labels[id] = el;
             } else {
                 el.attr({
                     'x': x, 'y': y,
-                    'font-size':fontsize,
-                    'stroke-width':strokewidth
+                    'font-size': fontsize,
+                    'stroke-width': strokewidth
                 });
             }
             if (idx > -1) {
@@ -77,7 +76,8 @@ PargApp.prototype.onpod = function(msg, pvalues, nvalues) {
     } else if (msg == "viewport") {
         pod = this.module.HEAPF64.subarray(pvalues, pvalues + nvalues);
         var left = pod[0], bottom = pod[1], right = pod[2], top = pod[3];
-        this.paper.attr({'viewBox': [left, -top, right - left, top - bottom]});
+        this.viewBox = [left, -top, right - left, top - bottom];
+        this.paper.attr({'viewBox': this.viewBox});
         this.rect.attr({
             'x': left, 'y': -top,
             'width': right - left,
