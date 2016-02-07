@@ -76,7 +76,11 @@ void cleanup()
 
 void generate(int32_t nnodes)
 {
+    bool* parents = 0;
+    int nparents = 0;
+
     if (nnodes == 0) {
+
         // Load the Tree of Life from a monolithic file if we haven't already.
         if (!app.monolith) {
             app.monolith = tol_load_monolith("monolith.0000.txt");
@@ -85,28 +89,56 @@ void generate(int32_t nnodes)
         printf("Loaded %'d clades.\n", app.monolith->nclades);
         nnodes = app.monolith->nclades;
         app.tree = malloc(sizeof(int32_t) * nnodes);
+        parents = calloc(nnodes, sizeof(int32_t));
         for (int32_t i = 0; i < nnodes; i++) {
-            app.tree[i] = app.monolith->parents[i];
+            int parent = app.monolith->parents[i];
+            app.tree[i] = parent;
+            if (!parents[parent]) {
+                parents[parent] = true;
+                nparents++;
+            }
         }
+
     } else {
+
         // Generate a random tree.  Square the random parent pointers to make
         // the graph distribution a bit more interesting, and to make it easier
         // for humans to find deep portions of the tree.
         printf("Generating tree with %d nodes...\n", nnodes);
         app.tree = malloc(sizeof(int32_t) * nnodes);
+        parents = calloc(nnodes, sizeof(int32_t));
         app.tree[0] = 0;
         for (int32_t i = 1; i < nnodes; i++) {
             float a = (float) rand() / RAND_MAX;
             float b = (float) rand() / RAND_MAX;
-            app.tree[i] = i * a * b;
+            int parent = i * a * b;
+            app.tree[i] = parent;
+            if (!parents[parent]) {
+                parents[parent] = true;
+                nparents++;
+            }
         }
     }
+
+    // Add an additional child to every non-leaf node.  This is used
+    // to make space for a secondary label, and to prevent singly-nested
+    // nodes from ever occuring.
+    int nnewnodes = nnodes + nparents;
+    app.tree = realloc(app.tree, sizeof(int32_t) * nnewnodes);
+    int noldnodes = nnodes;
+    for (int32_t i = 0; i < noldnodes; i++) {
+        if (parents[i]) {
+            app.tree[nnodes++] = i;
+        }
+    }
+    free(parents);
     app.nnodes = nnodes;
 
     // Perform circle packing.
     puts("Packing circles...");
     app.bubbles = par_bubbles_hpack_local(app.tree, nnodes);
     app.hover = -1;
+    par_bubbles_set_filter(app.bubbles, PAR_BUBBLES_FILTER_DISCARD_LAST_CHILD);
     camera_rig_init(app.bubbles);
 
     // Compute crosshairs position by finding the deepest leaf.
