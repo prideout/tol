@@ -42,7 +42,6 @@ typedef struct {
     double miny;
     double maxx;
     double maxy;
-    double zoom;
 } viewport_pod;
 
 struct {
@@ -292,12 +291,14 @@ void draw()
     }
     pa___n(app.labels) = 0;
     double const* xyr = app.culled->xyr;
+    double invw = 1.0 / (app.viewport.maxx - app.viewport.minx);
+    double invh = 1.0 / (app.viewport.maxy - app.viewport.miny);
     for (int i = 0; i < app.culled->count; i++, xyr += 3) {
         double screen_radius = xyr[2] / vpwidth;
         if (screen_radius > 0.1 && screen_radius < 0.8) {
             label_pod label = {
-                .x = xyr[0],
-                .y = xyr[1],
+                .x = (xyr[0] - app.viewport.minx) * invw,
+                .y = (xyr[1] - app.viewport.miny) * invh,
                 .id = app.culled->ids[i]
             };
             pa_push(app.labels, label);
@@ -314,8 +315,6 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
     parg_zcam_set_aspect(winwidth / winheight);
     if (parg_zcam_has_moved()) {
         parg_zcam_get_viewport(&app.viewport.minx);
-        app.viewport.zoom = 0;
-        parg_window_send("viewport", (double*) &app.viewport, 5);
         return 1;
     }
     return 0;

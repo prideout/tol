@@ -25,14 +25,8 @@ var PargApp = function(canvas, args, baseurl, block_interaction, attribs) {
     // After receiving responses from all HTTP requests, parg will
     // automatically call the user-defined init() function.
 
-    this.viewBox = [-1.5, 1.5, 3, 3];
+    this.viewBox = [0, -1, 1, 1];
     this.paper = Snap('#hud').attr({'viewBox': this.viewBox});
-
-    this.rect = this.paper.rect(-0.2, -0.2, 0.4, 0.4).attr({
-        fill: 'white',
-        strokeWidth: 0,
-        opacity: 0.01
-    });
 
     this.labels = {};
 };
@@ -42,8 +36,8 @@ PargApp.prototype.onpod = function(msg, pvalues, nvalues) {
     if (msg == "labels") {
         pod = this.module.HEAPF64.subarray(pvalues, pvalues + nvalues);
         var removals = Object.keys(this.labels).map(parseFloat);
-        var fontsize = (0.05 * this.viewBox[2]) + 'px'
-        var strokewidth = (0.005 * this.viewBox[2]) + 'px';
+        var fontsize = 0.05 + 'px'
+        var strokewidth = 0.005 + 'px';
         for (var i = 0; i < nvalues;) {
             x = pod[i++];
             y = -pod[i++];
@@ -59,11 +53,7 @@ PargApp.prototype.onpod = function(msg, pvalues, nvalues) {
                 });
                 this.labels[id] = el;
             } else {
-                el.attr({
-                    'x': x, 'y': y,
-                    'font-size': fontsize,
-                    'stroke-width': strokewidth
-                });
+                el.attr({ 'x': x, 'y': y });
             }
             if (idx > -1) {
                 removals.splice(idx, 1);
@@ -73,15 +63,6 @@ PargApp.prototype.onpod = function(msg, pvalues, nvalues) {
             this.labels[id].remove();
             delete this.labels[id];
         }
-    } else if (msg == "viewport") {
-        pod = this.module.HEAPF64.subarray(pvalues, pvalues + nvalues);
-        var left = pod[0], bottom = pod[1], right = pod[2], top = pod[3];
-        this.viewBox = [left, -top, right - left, top - bottom];
-        this.paper.attr({'viewBox': this.viewBox});
-        this.rect.attr({
-            'x': left, 'y': -top,
-            'width': right - left,
-            'height': top - bottom});
     } else {
         console.error('Unrecognized message: ' + msg);
     }
