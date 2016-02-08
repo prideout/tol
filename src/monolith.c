@@ -1,21 +1,15 @@
 #include <tol.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <assert.h>
 #include <string.h>
 
-tol_monolith_t* tol_load_monolith(char const* filename)
+tol_monolith_t* tol_load_monolith(parg_token token)
 {
     tol_monolith_t* monolith = TOL_CALLOC(tol_monolith_t, 1);
-    FILE* file = fopen(filename, "rb");
-    assert(file && "Unable to open file");
-    fseek(file, 0, SEEK_END);
-    long fsize = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    monolith->data = TOL_MALLOC(uint8_t, fsize + 1);
-    fread(monolith->data, fsize, 1, file);
-    fclose(file);
-    monolith->data[fsize] = 0;
+    monolith->buffer = parg_buffer_from_asset(token);
+    long fsize = parg_buffer_length(monolith->buffer);
+    assert(fsize > 1 && "Unable to load monolith buffer.");
+    monolith->data = parg_buffer_lock(monolith->buffer, PARG_READ);
     monolith->nclades = 0;
     for (long i = 0; i < fsize; i++) {
         if (monolith->data[i] == '\n') {
@@ -39,7 +33,7 @@ tol_monolith_t* tol_load_monolith(char const* filename)
 void tol_free_monolith(tol_monolith_t* monolith)
 {
     if (monolith) {
-        TOL_FREE(monolith->data);
+        parg_buffer_free(monolith->buffer);
         TOL_FREE(monolith->parents);
         TOL_FREE(monolith->labels);
         TOL_FREE(monolith);

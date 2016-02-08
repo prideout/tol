@@ -81,7 +81,7 @@ parg_buffer* parg_asset_to_buffer(parg_token id)
 sds parg_asset_baseurl()
 {
     if (!_baseurl) {
-        _baseurl = sdsnew("http://github.prideout.net/assets/");
+        _baseurl = sdsnew("http://localhost:8000/");
     }
     return _baseurl;
 }

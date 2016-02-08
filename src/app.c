@@ -25,7 +25,10 @@
 
 TOKEN_TABLE(PARG_TOKEN_DECLARE);
 
-#define ASSET_TABLE(F) F(SHADER_SIMPLE, "app.glsl")
+#define ASSET_TABLE(F) \
+    F(SHADER_SIMPLE, "app.glsl") \
+    F(BUFFER_MONOLITH, "monolith.0000.txt")
+
 ASSET_TABLE(PARG_TOKEN_DECLARE);
 
 const float FOVY = 32 * PARG_TWOPI / 180;
@@ -83,7 +86,7 @@ void generate(int32_t nnodes)
 
         // Load the Tree of Life from a monolithic file if we haven't already.
         if (!app.monolith) {
-            app.monolith = tol_load_monolith("monolith.0000.txt");
+            app.monolith = tol_load_monolith(BUFFER_MONOLITH);
         }
         setlocale(LC_ALL, "");
         printf("Loaded %'d clades.\n", app.monolith->nclades);
@@ -361,7 +364,7 @@ void dispose()
 
 void message(const char* msg)
 {
-    if (!strcmp(msg, "0")) {
+    if (!strcmp(msg, "TOL")) {
         generate(0);
     } else if (!strcmp(msg, "20K")) {
         generate(2e4);
@@ -383,7 +386,7 @@ void input(parg_event evt, float x, float y, float z)
     switch (evt) {
     case PARG_EVENT_KEYPRESS:
         if (key == '0') {
-            message("0");
+            message("TOL");
         } else if (key == '1') {
             message("20K");
         } else if (key == '2') {
