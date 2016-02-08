@@ -81,7 +81,7 @@ parg_buffer* parg_asset_to_buffer(parg_token id)
 sds parg_asset_baseurl()
 {
     if (!_baseurl) {
-        _baseurl = sdsnew("http://localhost:8000/");
+        _baseurl = sdsnew("");
     }
     return _baseurl;
 }

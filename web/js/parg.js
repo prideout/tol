@@ -27,22 +27,24 @@ var PargApp = function(canvas, args, baseurl, block_interaction, attribs) {
 
     this.viewBox = [0, -1, 1, 1];
     this.paper = Snap('#hud').attr({'viewBox': this.viewBox});
-    this.labels = {};
+    this.label_els = {};
+    this.label_strs = [];
 };
 
 PargApp.prototype.onpod = function(msg, pvalues, nvalues) {
     var pod, x, y, radius, id, el, idx;
-    if (msg == "labels") {
+    if (msg == "labels" && this.label_strs.length > 0) {
         pod = this.module.HEAPF64.subarray(pvalues, pvalues + nvalues);
-        var removals = Object.keys(this.labels).map(parseFloat);
+        var removals = Object.keys(this.label_els).map(parseFloat);
         for (var i = 0; i < nvalues;) {
             x = pod[i++];
             y = -pod[i++];
             id = pod[i++];
-            el = this.labels[id];
+            el = this.label_els[id];
             idx = removals.indexOf(id);
             if (!el) {
-                el = this.labels[id] = this.paper.text(0, 0, '' + id);
+                var txt = this.label_strs[id];
+                el = this.label_els[id] = this.paper.text(0, 0, txt);
             }
             el.transform( 'T' + x + ',' + y);
             if (idx > -1) {
@@ -50,11 +52,9 @@ PargApp.prototype.onpod = function(msg, pvalues, nvalues) {
             }
         }
         for (id of removals) {
-            this.labels[id].remove();
-            delete this.labels[id];
+            this.label_els[id].remove();
+            delete this.label_els[id];
         }
-    } else {
-        console.error('Unrecognized message: ' + msg);
     }
 };
 
@@ -103,11 +103,32 @@ PargApp.prototype.request_assets = function() {
     }
 };
 
+PargApp.prototype.load_labels = function(uberstring) {
+    console.log('Parsing...');
+    var clades = uberstring.split('\n').slice(1), i = 0;
+    this.label_strs.push('');
+    for (var clade of clades) {
+        var name = clade.trim().split(' ').slice(1).join(' ');
+        this.label_strs.push(name == '*' ? ' ' : name);
+    }
+    console.log('Done.');
+};
+
 PargApp.prototype.onasset = function(id, arraybuffer) {
-    var ptr = this.module.Asset.alloc(id, arraybuffer.byteLength);
-    var u8buffer = new Uint8Array(arraybuffer);
+    var ptr = this.module.Asset.alloc(id, arraybuffer.byteLength),
+        u8buffer = new Uint8Array(arraybuffer),
+        self = this;
     this.module.HEAPU8.set(u8buffer, ptr);
     this.module.Asset.commit(id);
+    if (id == 'monolith.0000.txt') {
+        console.log('Stringifying...');
+        var bb = new Blob([u8buffer]),
+            f = new FileReader();
+        f.onload = function(e) {
+            self.load_labels(e.target.result);
+        };
+        f.readAsText(bb);
+    }
     if (--this.nrequests === 0) {
         this.start();
     }
