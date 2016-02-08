@@ -186,8 +186,10 @@ svg text {
     paint-order: stroke;
     stroke: #444;
     fill: #eee;
-    font-family: 'Roboto Condensed', sans-serif;
-    font-size: 0.05px;
+    font-family: 'Open Sans', sans-serif;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    font-size: 0.03px;
     stroke-width: 0.005px;
     text-anchor: middle;
     dominant-baseline: middle;
