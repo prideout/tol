@@ -33,7 +33,17 @@ var PargApp = function(canvas, args, baseurl, block_interaction, attribs) {
 
 PargApp.prototype.onpod = function(msg, pvalues, nvalues) {
     var pod, x, y, radius, id, el, idx;
-    if (msg == "labels" && this.label_strs.length > 0) {
+    if (msg == "set_labels") {
+        pod = this.module.HEAPU8.subarray(pvalues, pvalues + nvalues);
+        var bb = new Blob([pod]),
+            f = new FileReader();
+        f.onload = function(e) {
+            this.load_labels(e.target.result);
+        }.bind(this);
+        f.readAsText(bb);
+        return;
+    }
+    if (msg == "draw_labels" && this.label_strs.length > 0) {
         pod = this.module.HEAPF64.subarray(pvalues, pvalues + nvalues);
         var removals = Object.keys(this.label_els).map(parseFloat);
         for (var i = 0; i < nvalues;) {
@@ -104,14 +114,15 @@ PargApp.prototype.request_assets = function() {
 };
 
 PargApp.prototype.load_labels = function(uberstring) {
-    console.log('Parsing...');
-    var clades = uberstring.split('\n').slice(1), i = 0;
+    console.log('Parsing labels...');
+    var nullc = String.fromCharCode(0),
+        clades = uberstring.split(nullc),
+        nclades = clades.length;
     this.label_strs.push('');
-    for (var clade of clades) {
-        var name = clade.trim().split(' ').slice(1).join(' ');
-        this.label_strs.push(name == '*' ? ' ' : name);
+    for (var i = 3; i < nclades; i += 2) {
+        var clade = clades[i];
+        this.label_strs.push(clade == '*' ? ' ' : clade);
     }
-    console.log('Done.');
 };
 
 PargApp.prototype.onasset = function(id, arraybuffer) {
@@ -120,15 +131,6 @@ PargApp.prototype.onasset = function(id, arraybuffer) {
         self = this;
     this.module.HEAPU8.set(u8buffer, ptr);
     this.module.Asset.commit(id);
-    if (id == 'monolith.0000.txt') {
-        console.log('Stringifying...');
-        var bb = new Blob([u8buffer]),
-            f = new FileReader();
-        f.onload = function(e) {
-            self.load_labels(e.target.result);
-        };
-        f.readAsText(bb);
-    }
     if (--this.nrequests === 0) {
         this.start();
     }

@@ -25,6 +25,9 @@ int parg_window_exec(float winwidth, float winheight, int vsync, int aa);
 
 #ifdef EMSCRIPTEN
 void parg_window_send(const char* msg, double* values, int nvalues);
+void parg_window_send_bytes(const char* msg, uint8_t* values, int nvalues);
 #else
 static void parg_window_send(const char* msg, double* values, int nvalues) {}
+static void parg_window_send_bytes(const char* msg, uint8_t* values,
+    int nvalues) {}
 #endif

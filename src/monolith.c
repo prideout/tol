@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <parwin.h>
 
 tol_monolith_t* tol_load_monolith(parg_token token)
 {
@@ -24,9 +25,11 @@ tol_monolith_t* tol_load_monolith(parg_token token)
         assert(' ' == data[7]);
         data[7] = 0;
         monolith->parents[j] = atoi((const char*) data);
-        monolith->labels[j] = (char const*) (data += 8);
+        data += 8;
+        monolith->labels[j] = (char const*) data;
         data += strlen(monolith->labels[j]) + 1;
     }
+    parg_window_send_bytes("set_labels", monolith->data, fsize);
     return monolith;
 }
 

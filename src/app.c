@@ -67,7 +67,7 @@ struct {
 static void send_labels()
 {
     label_pod* labels = app.labels;
-    parg_window_send("labels", (double*) labels, pa_count(labels) * 3);
+    parg_window_send("draw_labels", (double*) labels, pa_count(labels) * 3);
 }
 
 void cleanup()

@@ -153,6 +153,14 @@ void parg_window_send(const char* msg, double* values, int nvalues)
     parg.call<void>("onpod", std::string(msg), ptr, nvalues);
 }
 
+void parg_window_send_bytes(const char* msg, uint8_t* values, int nvalues)
+{
+    using namespace emscripten;
+    auto parg = val::module_property("parg");
+    uint32_t ptr = ((uint32_t) values);
+    parg.call<void>("onpod", std::string(msg), ptr, nvalues);
+}
+
 EMSCRIPTEN_BINDINGS(par)
 {
     using namespace emscripten;
