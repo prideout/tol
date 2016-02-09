@@ -137,6 +137,10 @@ void generate(int32_t nnodes)
     free(parents);
     app.nnodes = nnodes;
 
+    // Preferring vertical layout for 2-child families makes it less likely
+    // for children labels to collide with one another.
+    par_bubbles_set_orientation(PAR_BUBBLES_VERTICAL);
+
     // Perform circle packing.
     puts("Packing circles...");
     app.bubbles = par_bubbles_hpack_local(app.tree, nnodes);

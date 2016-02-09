@@ -185,6 +185,16 @@ typedef enum {
 // node, which is especially useful when using placeholder bubbles for labels.
 void par_bubbles_set_filter(par_bubbles_t* src, par_bubbles_filter f);
 
+typedef enum {
+    PAR_BUBBLES_HORIZONTAL,
+    PAR_BUBBLES_VERTICAL
+} par_bubbles_orientation;
+
+// Sets some global state that affect subsequent calls to hpack. The first two
+// children can either be placed horizontally (default) or vertically.  The
+// effect of this is subtle, since overall layout is obviously circular.
+void par_bubbles_set_orientation(par_bubbles_orientation );
+
 #ifndef PAR_PI
 #define PAR_PI (3.14159265359)
 #define PAR_MIN(a, b) (a > b ? b : a)
@@ -218,6 +228,8 @@ void par_bubbles_set_filter(par_bubbles_t* src, par_bubbles_filter f);
 #include <stdlib.h>
 #include <float.h>
 #include <assert.h>
+
+static par_bubbles_orientation par_bubbles__ostate = PAR_BUBBLES_HORIZONTAL;
 
 typedef struct {
     PARINT prev;
@@ -274,14 +286,26 @@ static void par_bubbles__initflat(par_bubbles__t* bubbles)
     PARFLT* xyr = bubbles->xyr;
     PARFLT const* radii = bubbles->radiuses;
     par_bubbles__node* chain = bubbles->chain;
-    *xyr++ = -*radii;
-    *xyr++ = 0;
+    PARFLT x0, y0, x1, y1;
+    if (par_bubbles__ostate == PAR_BUBBLES_HORIZONTAL) {
+        x0 = -radii[0];
+        y0 = 0;
+        x1 = radii[1];
+        y1 = 0;
+    } else {
+        x0 = 0;
+        y0 = -radii[0];
+        x1 = 0;
+        y1 = radii[1];
+    }
+    *xyr++ = x0;
+    *xyr++ = y0;
     *xyr++ = *radii++;
     if (bubbles->count == ++bubbles->npacked) {
         return;
     }
-    *xyr++ = *radii;
-    *xyr++ = 0;
+    *xyr++ = x1;
+    *xyr++ = y1;
     *xyr++ = *radii++;
     if (bubbles->count == ++bubbles->npacked) {
         return;
@@ -1306,6 +1330,11 @@ bool par_bubbles_transform_local(par_bubbles_t const* bubbles, PARFLT* xform,
     xform[1] += xform2[1];
 
     return false;
+}
+
+void par_bubbles_set_orientation(par_bubbles_orientation ostate)
+{
+    par_bubbles__ostate = ostate;
 }
 
 #undef PARINT
