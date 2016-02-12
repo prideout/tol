@@ -22,10 +22,9 @@ tol_monolith_t* tol_load_monolith(parg_token token)
     monolith->labels = TOL_MALLOC(char const*, monolith->nclades);
     uint8_t* data = monolith->data;
     for (long j = 0; j < monolith->nclades; j++) {
-        assert(' ' == data[7]);
-        data[7] = 0;
-        monolith->parents[j] = atoi((const char*) data);
-        data += 8;
+        data[6] = data[13] = 0;
+        monolith->parents[j] = strtol((const char*) data + 7, 0, 16);
+        data += 14;
         monolith->labels[j] = (char const*) data;
         data += strlen(monolith->labels[j]) + 1;
     }

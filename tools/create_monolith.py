@@ -44,6 +44,9 @@ def download_file(url, filename):
                 f.write(chunk)
     print
 
+def id_to_string(id):
+    return format(id, '#08x')[2:]
+
 if __name__ == '__main__':
     args = parser.parse_args()
     filename = urlparse.urlsplit(args.url).path.split('/')[-1]
@@ -83,11 +86,14 @@ if __name__ == '__main__':
     # Create a simple text file
     puts('Dumping simple text file...')
     outfile = open('monolith.{}.txt'.format(TREE_VERSION), 'wt')
+    lineno = 0
     for clade in tree.find_clades():
         if clade.name:
             name = ' '.join(clade.name.split('_')[:-1])
         else:
             name = '*'
         parent = treedict.get(clade, None)
-        lineno = linenos.get(parent, 0)
-        outfile.write('{0:7} {1}\n'.format(lineno, name))
+        clade_id = id_to_string(lineno)
+        parent_id = id_to_string(linenos.get(parent, 0))
+        outfile.write('{0} {1} {2}\n'.format(clade_id, parent_id, name))
+        lineno = lineno + 1
