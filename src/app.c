@@ -86,21 +86,24 @@ void generate(int32_t nnodes)
 
         // Load the Tree of Life from a monolithic file if we haven't already.
         if (!app.monolith) {
-            app.monolith = tol_load_monolith(BUFFER_MONOLITH);
+            app.monolith = tol_monolith_load(BUFFER_MONOLITH);
         }
         setlocale(LC_ALL, "");
         printf("Loaded %'d clades.\n", app.monolith->nclades);
         nnodes = app.monolith->nclades;
         app.tree = malloc(sizeof(int32_t) * nnodes);
         parents = calloc(nnodes, sizeof(int32_t));
+        tol_monolith_t* packed = tol_monolith_pack(app.monolith);
         for (int32_t i = 0; i < nnodes; i++) {
-            int parent = app.monolith->parents[i];
+            int parent = packed->parents[i];
+            // int parent = app.monolith->parents[i];
             app.tree[i] = parent;
             if (!parents[parent]) {
                 parents[parent] = true;
                 nparents++;
             }
         }
+        tol_monolith_free(packed);
 
     } else {
 
@@ -354,7 +357,7 @@ int tick(float winwidth, float winheight, float pixratio, float seconds)
 void dispose()
 {
     camera_rig_free();
-    tol_free_monolith(app.monolith);
+    tol_monolith_free(app.monolith);
     parg_shader_free(P_DISKS);
     parg_shader_free(P_LINES);
     parg_mesh_free(app.disk_mesh);
