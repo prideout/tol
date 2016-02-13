@@ -119,7 +119,8 @@ PargApp.prototype.load_labels = function(uberstring) {
         clades = uberstring.split(nullc),
         nclades = clades.length;
     this.label_strs.push('');
-    for (var i = 3; i < nclades; i += 2) {
+    // Skip the first row, and the first two columns of each subsequent row.
+    for (var i = 5; i < nclades; i += 3) {
         var clade = clades[i];
         this.label_strs.push(clade == '*' ? ' ' : clade);
     }

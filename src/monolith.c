@@ -10,6 +10,7 @@ tol_monolith_t* tol_monolith_load(parg_token token)
     monolith->buffer = parg_buffer_from_asset(token);
     long fsize = parg_buffer_length(monolith->buffer);
     assert(fsize > 1 && "Unable to load monolith buffer.");
+    monolith->buflen = fsize;
     monolith->data = parg_buffer_lock(monolith->buffer, PARG_READ);
     monolith->nclades = 0;
     for (long i = 0; i < fsize; i++) {
@@ -41,7 +42,11 @@ tol_monolith_t* tol_monolith_load(parg_token token)
 void tol_monolith_free(tol_monolith_t* monolith)
 {
     if (monolith) {
-        parg_buffer_free(monolith->buffer);
+        if (monolith->buffer) {
+            parg_buffer_free(monolith->buffer);
+        } else {
+            TOL_FREE(monolith->data);
+        }
         TOL_FREE(monolith->parents);
         TOL_FREE(monolith->ids);
         TOL_FREE(monolith->labels);
@@ -70,5 +75,28 @@ tol_monolith_t* tol_monolith_pack(tol_monolith_t const* src)
 
 void tol_monolith_merge(tol_monolith_t* dst, tol_monolith_t const* src)
 {
-    // TODO
+    int32_t nclades = dst->nclades + src->nclades;
+    int32_t buflen = dst->buflen + src->buflen;
+    dst->parents = TOL_REALLOC(int32_t, dst->parents, nclades);
+    dst->ids = TOL_REALLOC(int32_t, dst->ids, nclades);
+    dst->labels = TOL_REALLOC(char const*, dst->labels, nclades);
+    uint8_t* data = TOL_MALLOC(uint8_t, buflen);
+    for (int32_t i = 0; i < dst->nclades; i++) {
+        intptr_t offset = (intptr_t) dst->labels[i] - (intptr_t) dst->data;
+        dst->labels[i] = (char const*) (data + offset);
+    }
+    for (int32_t i = dst->nclades, j = 0; i < nclades; i++, j++) {
+        dst->parents[i] = src->parents[j];
+        dst->ids[i] = src->ids[j];
+        intptr_t offset = (intptr_t) src->labels[j] - (intptr_t) src->data;
+        dst->labels[i] = (char const*) (data + dst->buflen + offset);
+    }
+    memcpy(data, dst->data, dst->buflen);
+    memcpy(data + dst->buflen, src->data, src->buflen);
+    dst->buflen = buflen;
+    dst->data = data;
+    dst->nclades = nclades;
+    dst->maxid = PARG_MAX(dst->maxid, src->maxid);
+    parg_buffer_free(dst->buffer);
+    dst->buffer = 0;
 }

@@ -27,7 +27,8 @@ TOKEN_TABLE(PARG_TOKEN_DECLARE);
 
 #define ASSET_TABLE(F) \
     F(SHADER_SIMPLE, "app.glsl") \
-    F(BUFFER_MONOLITH, "monolith.0000.txt")
+    F(BUFFER_MONOLITH_A, "monolith.0000.a.txt") \
+    F(BUFFER_MONOLITH_B, "monolith.0000.b.txt")
 
 ASSET_TABLE(PARG_TOKEN_DECLARE);
 
@@ -86,7 +87,11 @@ void generate(int32_t nnodes)
 
         // Load the Tree of Life from a monolithic file if we haven't already.
         if (!app.monolith) {
-            app.monolith = tol_monolith_load(BUFFER_MONOLITH);
+            app.monolith = tol_monolith_load(BUFFER_MONOLITH_A);
+        } else if (app.monolith && app.monolith->nclades < 10000) {
+            tol_monolith_t* bigmama = tol_monolith_load(BUFFER_MONOLITH_B);
+            tol_monolith_merge(app.monolith, bigmama);
+            tol_monolith_free(bigmama);
         }
         setlocale(LC_ALL, "");
         printf("Loaded %'d clades.\n", app.monolith->nclades);
@@ -96,7 +101,6 @@ void generate(int32_t nnodes)
         tol_monolith_t* packed = tol_monolith_pack(app.monolith);
         for (int32_t i = 0; i < nnodes; i++) {
             int parent = packed->parents[i];
-            // int parent = app.monolith->parents[i];
             app.tree[i] = parent;
             if (!parents[parent]) {
                 parents[parent] = true;
@@ -191,7 +195,7 @@ void init(float winwidth, float winheight, float pixratio)
     app.crosshairs_buffer = parg_buffer_alloc(vstride * 4, PARG_GPU_ARRAY);
 
     // Create the initial bubble diagram.
-    generate(2e4);
+    generate(0);
 
     // Create disk_unit shape.
     float normal[3] = {0, 0, 1};

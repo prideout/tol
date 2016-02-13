@@ -10,6 +10,7 @@
 
 typedef struct {
     uint8_t* data;
+    int32_t buflen;
     int32_t nclades;
     int32_t* parents;
     int32_t* ids;
