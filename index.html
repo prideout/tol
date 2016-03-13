@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name=viewport content="width=device-width,minimum-scale=1,maximum-scale=1">
+<title>Sweep and Prune</title>
+<meta name="description" content="Sweep and Prune demo">
+<meta name="author" content="Philip Rideout">
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.1.0/styles/default.min.css">
+<style>
+html {
+    color: #404040;
+    font-weight: 400;
+    text-rendering: optimizeLegibility;
+    visibility: hidden;
+}
+.wf-active, .wf-inactive {
+  visibility: visible;
+  font-family: 'Open Sans', sans-serif;
+}
+button {
+    background: #DED5C4;
+    border: none;
+    border-radius: 5px;
+    line-height: 2;
+    margin-top: 5px;
+    margin-right: 5px;
+}
+button:hover { background: #7ae; color: #fff; }
+button:focus { outline:0 }
+button.checked { border: solid 1px black; }
+a {
+    color: #369;
+    text-decoration: none;
+}
+body {
+    padding: 0;
+    margin: 0;
+}
+article {
+    max-width:640px;
+    background:#efefef;
+    padding: 10px;
+    margin: 0;
+}
+canvas {
+    background: #DED5C4;
+    background-image: radial-gradient(250px at 50% 50%,
+        rgba(255, 255, 255, 1) 0%,
+        rgba(255, 255, 255, 0) 100%);
+    border-radius: 5px;
+    width: 100%;
+    height: 500px;
+    max-width: 500px;
+    display: block;
+}
+.overlay {
+    fill: none;
+    pointer-events: all;
+}
+.hljs {
+    background: #EAE7DF;
+    font-size: 12px;
+    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+}
+</style>
+</head>
+
+<body>
+<article>
+<a href="https://github.com/prideout/par/blob/master/par_sprune.h">par_sprune.h</a>
+<p>
+Try zooming and panning within the canvas as though it were a map.  Overlapping quads are shaded.
+</p>
+<canvas>
+</canvas>
+<button id="home">home position</button>
+<button id="cull">culling</button>
+<pre id="perf"></pre>
+<p>
+This is the web demo for <a href="https://github.com/prideout/par/blob/master/par_sprune.h">par_sprune.h</a>.
+It performs sweep-and-prune with 500 bounding boxes using an emscripten web worker.
+D3 is used for camera control.  Canvas2D is used for rendering.
+</p>
+
+The API is really simple.  There's only one important function:
+
+<pre><code class="c">// Takes an array of 4-tuples (minx miny maxx maxy) and performs SaP. Optionally
+// takes an existing context to avoid memory churn during animation.  Pass NULL
+// for the third argument when calling for the first time.
+par_sprune_context* par_sprune_overlap(float const* aabbs,
+    int naabbs, par_sprune_context* previous);
+</code></pre>
+
+This returns a structure that looks like this:
+
+<pre><code class="c">typedef struct {
+    int const* const collision_pairs; // list of two-tuples
+    int const ncollision_pairs;       // number of two-tuples
+} par_sprune_context;
+</code></pre>
+
+When you're done reading the data, use the provided free function:
+
+<pre><code class="c">void par_sprune_free_context(par_sprune_context* context);
+</code></pre>
+
+That's it!  The API also proffers a function for culling away overlapping boxes, which is potentially useful when drawing labels on a map.  See <a href="https://github.com/prideout/par">the header file</a> for details.
+
+<p>
+<a href="//github.prideout.net">
+<img src="http://github.prideout.net/assets/PublishedLogo.svg" height="50">
+</a>
+</p>
+
+</article>
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.1.0/highlight.min.js"></script>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script src="zoom.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/webfont/1.5.18/webfont.js"></script>
+<script>
+hljs.initHighlightingOnLoad();
+WebFont.load({ google: { families: ['Open Sans:400'] } });
+</script>
+</body>
+</html>
