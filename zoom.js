@@ -95,18 +95,6 @@ var App = function() {
         });
     };
 
-    this.culling = false;
-    var cull_button = document.getElementById("cull");
-    cull_button.onclick = function() {
-        this.culling = !this.culling;
-        if (this.culling) {
-            cull_button.classList.add('checked');
-        } else {
-            cull_button.classList.remove('checked');
-        }
-        this.dirty_viewport = true;
-    }.bind(this);
-
     var pixelScale = window.devicePixelRatio || 1;
     this.context = d3.select("canvas")
         .attr("width", this.winsize[0] * pixelScale)
@@ -188,54 +176,42 @@ App.prototype.draw = function() {
     canvas.strokeStyle = "rgba(0, 0, 0, 0.25)";
     canvas.fillStyle = "rgba(0, 128, 255, 0.1)";
 
-    // Safari doesn't support indexOf with typed arrays, so we have to convert
-    // it into a native JS array.
-    var culled = this.culling ? Array.prototype.slice.call(this.culled) : [];
-
     // Draw black outlines for every non-culled box.
     while (++i < n) {
-        if (culled.indexOf(i) == -1) {
-            x0 = data[j++];
-            y0 = data[j++];
-            x1 = data[j++];
-            y1 = data[j++];
-            cx = x(0.5 * (x0 + x1));
-            cy = y(0.5 * (y0 + y1));
-            w = x1 - x0;
-            h = y1 - y0;
-            canvas.strokeRect(cx - w * 0.5, cy - h * 0.5, w, h);
-        } else {
-            j += 4;
-        }
+        x0 = data[j++];
+        y0 = data[j++];
+        x1 = data[j++];
+        y1 = data[j++];
+        cx = x(0.5 * (x0 + x1));
+        cy = y(0.5 * (y0 + y1));
+        w = x1 - x0;
+        h = y1 - y0;
+        canvas.strokeRect(cx - w * 0.5, cy - h * 0.5, w, h);
     }
 
     // Draw bluish fill for every box that has overlap.
     if (this.collisions) {
         for (var i = 0; i < this.collisions.length; i += 2) {
             j = this.collisions[i] * 4;
-            if (culled.indexOf(j / 4) == -1) {
-                x0 = data[j++];
-                y0 = data[j++];
-                x1 = data[j++];
-                y1 = data[j];
-                cx = x(0.5 * (x0 + x1));
-                cy = y(0.5 * (y0 + y1));
-                w = x1 - x0;
-                h = y1 - y0;
-                canvas.fillRect(cx - w * 0.5, cy - h * 0.5, w, h);
-            }
+            x0 = data[j++];
+            y0 = data[j++];
+            x1 = data[j++];
+            y1 = data[j];
+            cx = x(0.5 * (x0 + x1));
+            cy = y(0.5 * (y0 + y1));
+            w = x1 - x0;
+            h = y1 - y0;
+            canvas.fillRect(cx - w * 0.5, cy - h * 0.5, w, h);
             j = this.collisions[i + 1] * 4;
-            if (culled.indexOf(j / 4) == -1) {
-                x0 = data[j++];
-                y0 = data[j++];
-                x1 = data[j++];
-                y1 = data[j];
-                cx = x(0.5 * (x0 + x1));
-                cy = y(0.5 * (y0 + y1));
-                w = x1 - x0;
-                h = y1 - y0;
-                canvas.fillRect(cx - w * 0.5, cy - h * 0.5, w, h);
-            }
+            x0 = data[j++];
+            y0 = data[j++];
+            x1 = data[j++];
+            y1 = data[j];
+            cx = x(0.5 * (x0 + x1));
+            cy = y(0.5 * (y0 + y1));
+            w = x1 - x0;
+            h = y1 - y0;
+            canvas.fillRect(cx - w * 0.5, cy - h * 0.5, w, h);
         }
     }
 };
