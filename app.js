@@ -73,18 +73,32 @@ var App = function() {
         });
     };
 
-    var pixelScale = window.devicePixelRatio || 1;
+    var resizeThrottle;
+    window.onresize = function() {
+        clearTimeout(resizeThrottle);
+        resizeThrottle = setTimeout(this.refresh_viewport.bind(this), 250);
+    }.bind(this);
+
     this.context = d3.select("canvas")
-        .attr("width", this.winsize[0] * pixelScale)
-        .attr("height", this.winsize[1] * pixelScale)
         .call(this.mouse_handler)
         .node().getContext("2d");
 
+    this.refresh_viewport();
+
+    this.tick = this.tick.bind(this);
+    this.tick();
+};
+
+App.prototype.refresh_viewport = function() {
+    var pixelScale = this.pixelScale = window.devicePixelRatio;
+    var canvas = document.getElementsByTagName('canvas')[0];
+    var width = this.winsize[0] = canvas.clientWidth;
+    var height = this.winsize[1] = canvas.clientHeight;
+    canvas.width = width * pixelScale;
+    canvas.height = height * pixelScale;
     this.context.scale(pixelScale, pixelScale);
     this.dirty_draw = true;
     this.dirty_viewport = true;
-    this.tick = this.tick.bind(this);
-    this.tick();
 };
 
 App.prototype.send_message = function(msg, data) {
@@ -95,6 +109,11 @@ App.prototype.send_message = function(msg, data) {
 };
 
 App.prototype.tick = function() {
+
+    var pixelScale = window.devicePixelRatio;
+    if (pixelScale != this.pixelScale) {
+        this.refresh_viewport();
+    }
 
     if (this.dirty_viewport) {
 

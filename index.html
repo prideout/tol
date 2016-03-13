@@ -14,10 +14,12 @@ html {
     color: #404040;
     font-weight: 400;
     text-rendering: optimizeLegibility;
+    height: 100%;
 }
 body {
     padding: 0;
     margin: 0;
+    height: 100%;
 }
 a {
     background: rgba(255, 255, 255, 0.2);
@@ -39,7 +41,10 @@ a.disabled {
     cursor: default;
 }
 article {
-    max-width:960px;
+    width: 100%;
+    height: 100%;
+    max-width:1366px;
+    max-height:1366px;
     background:#efefef;
     padding: 0;
     margin: 0;
@@ -47,8 +52,8 @@ article {
 }
 canvas {
     background: #DED5C4;
-    width: 960px;
-    height: 540px;
+    width: 100%;
+    height: 100%;
     display: block;
 }
 overlay {
@@ -101,9 +106,6 @@ icon {
         <a id="home"><icon>&#xe802;</icon></a>
         <a href="https://github.com/prideout/tol"><icon>&#xe801;</icon></a>
         <a id="search" class="disabled"><icon>&#xe800;</icon></a>
-    </overlay>
-    <overlay class="right">
-        <a id="maximize"><icon>&#xe804;</icon></a>
     </overlay>
 </article>
 <script src="//d3js.org/d3.v3.min.js"></script>
