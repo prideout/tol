@@ -19,15 +19,25 @@ body {
     padding: 0;
     margin: 0;
 }
-a, button {
-    background: none;
+a {
+    background: rgba(255, 255, 255, 0.2);
     border: none;
+    border-radius: 5px;
+    padding: 5px;
     color: #333;
     text-decoration: none;
     font-size: 16px;
+    cursor: pointer;
 }
-a:hover, button:hover { background: #7ae; color: #fff; }
-button:focus { outline: 0 }
+a:hover {
+    background: #7ae;
+    color: #fff;
+}
+a.disabled {
+    color: #ccc;
+    background: none;
+    cursor: default;
+}
 article {
     max-width:540px;
     background:#efefef;
@@ -71,12 +81,10 @@ icon {
     speak: none;
     display: inline-block;
     text-decoration: inherit;
-    width: 1em;
-    margin-right: .2em;
+    margin: .2em;
     text-align: center;
     font-variant: normal;
     text-transform: none;
-    line-height: 1em;
     font-size: 120%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -90,11 +98,12 @@ icon {
     <canvas>
     </canvas>
     <overlay class="left">
-        <button id="home"><icon>&#xe802;</icon></button>
+        <a id="home"><icon>&#xe802;</icon></a>
         <a href="https://github.com/prideout/tol"><icon>&#xe801;</icon></a>
+        <a id="search" class="disabled"><icon>&#xe800;</icon></a>
     </overlay>
     <overlay class="right">
-        <button id="maximize"><icon>&#xe804;</icon></button>
+        <a id="maximize"><icon>&#xe804;</icon></a>
     </overlay>
 </article>
 <script src="//d3js.org/d3.v3.min.js"></script>
