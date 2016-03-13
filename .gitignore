@@ -1,0 +1,5 @@
+build
+*.gz
+*.bin
+*.tre
+monolith.*.txt
