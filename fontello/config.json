@@ -23,6 +23,12 @@
       "css": "home",
       "code": 59394,
       "src": "fontawesome"
+    },
+    {
+      "uid": "e594fc6e5870b4ab7e49f52571d52577",
+      "css": "resize-full-1",
+      "code": 59396,
+      "src": "fontawesome"
     }
   ]
 }

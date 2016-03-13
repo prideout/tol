@@ -8,35 +8,32 @@
 <title>Tree of Life</title>
 <meta name="description" content="Tree of Life interactive bubble diagram">
 <meta name="author" content="Philip Rideout">
+<link rel="shortcut icon" href="https://tree.opentreeoflife.org/favicon.ico">
 <style>
 html {
     color: #404040;
     font-weight: 400;
     text-rendering: optimizeLegibility;
 }
-button {
-    background: none;
-    border: none;
-    color: black;
-    font-size: 16px;
-}
-button:hover { background: #7ae; color: #fff; }
-button:focus { outline:0 }
-button.checked { border: solid 1px black; }
-a {
-    color: black;
-    text-decoration: none;
-    font-size: 16px;
-}
 body {
     padding: 0;
     margin: 0;
 }
+a, button {
+    background: none;
+    border: none;
+    color: #333;
+    text-decoration: none;
+    font-size: 16px;
+}
+a:hover, button:hover { background: #7ae; color: #fff; }
+button:focus { outline: 0 }
 article {
-    max-width:640px;
+    max-width:540px;
     background:#efefef;
-    padding: 10px;
+    padding: 0;
     margin: 0;
+    position: relative;
 }
 canvas {
     background: #DED5C4;
@@ -44,17 +41,26 @@ canvas {
     height: 960px;
     display: block;
 }
-.overlay {
-    fill: none;
-    pointer-events: all;
+overlay {
+    display: block;
+    position: absolute;
+    top: 10px;
+}
+overlay.left {
+    left: 10px;
+}
+overlay.right {
+    text-align:right;
+    right: 10px;
+    width: 50px;
 }
 @font-face {
     font-family: 'fontello';
-    src: url('fontello/font/fontello.eot?58291935');
-    src: url('fontello/font/fontello.eot?58291935#iefix') format('embedded-opentype'),
-       url('fontello/font/fontello.woff?58291935') format('woff'),
-       url('fontello/font/fontello.ttf?58291935') format('truetype'),
-       url('fontello/font/fontello.svg?58291935#fontello') format('svg');
+    src: url('fontello/font/fontello.eot?80860773');
+    src: url('fontello/font/fontello.eot?80860773#iefix') format('embedded-opentype'),
+         url('fontello/font/fontello.woff?80860773') format('woff'),
+         url('fontello/font/fontello.ttf?80860773') format('truetype'),
+         url('fontello/font/fontello.svg?80860773#fontello') format('svg');
     font-weight: normal;
     font-style: normal;
 }
@@ -81,12 +87,17 @@ icon {
 
 <body>
 <article>
-<canvas>
-</canvas>
-<button id="home"><icon>&#xe802;</icon></button>
-<a href="https://github.com/prideout/tol"><icon>&#xe801;</icon></a>
+    <canvas>
+    </canvas>
+    <overlay class="left">
+        <button id="home"><icon>&#xe802;</icon></button>
+        <a href="https://github.com/prideout/tol"><icon>&#xe801;</icon></a>
+    </overlay>
+    <overlay class="right">
+        <button id="maximize"><icon>&#xe804;</icon></button>
+    </overlay>
+</article>
 <script src="//d3js.org/d3.v3.min.js"></script>
 <script src="zoom.js"></script>
-
 </body>
 </html>
