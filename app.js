@@ -1,20 +1,5 @@
 'using strict';
 
-var BENCHMARK = false;
-
-var monkeypatch_random = function(seed) {
-    var m_w = seed || 123456789;
-    var m_z = 987654321;
-    var mask = 0xffffffff;
-    Math.random = function() {
-        m_z = (36969 * (m_z & 65535) + (m_z >> 16)) & mask;
-        m_w = (18000 * (m_w & 65535) + (m_w >> 16)) & mask;
-        var result = ((m_z << 16) + m_w) & mask;
-        result /= 4294967296;
-        return result + 0.5;
-    }
-};
-
 var App = function() {
 
     this.worker = new Worker('worker.js');
@@ -30,9 +15,6 @@ var App = function() {
         this.pending_collision = false;
         var current = performance.now();
         var time = Math.floor(current - this.start_time);
-        if (BENCHMARK) {
-            document.getElementById('perf').innerHTML = time + ' ms';
-        }
         this.collisions = new Uint32Array(msg.data.collisions.buffer);
         this.culled = new Uint32Array(msg.data.culled.buffer);
         this.dirty_draw = true;
@@ -42,16 +24,13 @@ var App = function() {
     this.winsize = new Float32Array(2);
     this.winsize_bytes = new Uint8Array(this.winsize.buffer);
     var width = this.winsize[0] = canvas.clientWidth;
-    canvas.style.height = this.winsize[0] + 'px';
     var height = this.winsize[1] = canvas.clientHeight;
     this.send_message('d3cpp_set_winsize', this.winsize_bytes);
 
     this.viewport = new Float32Array(4);
     this.viewport_bytes = new Uint8Array(this.viewport.buffer);
 
-    monkeypatch_random();
-
-    var count = 500, rsize = 0.02, msize = 0.3, i, j, cx, cy, w, h,
+    var count = 500, rsize = 0.02, msize = 0.1, i, j, cx, cy, w, h,
         randomX = d3.random.normal(this.winsize[0] / 2, this.winsize[0] / 5),
         randomY = d3.random.normal(this.winsize[1] / 2, this.winsize[1] / 5);
     this.data = new Float32Array(count * 4);
@@ -59,8 +38,7 @@ var App = function() {
     for (i = 0, j = 0; i < count; i++) {
         cx = randomX();
         cy = randomY();
-        w = this.winsize[0] * rsize * (msize + Math.random());
-        h = this.winsize[1] * rsize * (msize + Math.random());
+        h = w = this.winsize[0] * rsize * (msize + Math.random());
         this.data[j++] = cx - w;
         this.data[j++] = cy - h;
         this.data[j++] = cx + w;
@@ -138,17 +116,6 @@ App.prototype.tick = function() {
     if (this.dirty_draw) {
         this.draw();
         this.dirty_draw = false;
-    }
-
-    if (BENCHMARK) {
-        var pc = this.perf_counter = (this.perf_counter || 0) + 1;
-        if ((pc % 10) == 0) {
-            var dm = [0, this.winsize[0] + 100 * Math.sin(pc / 10)];
-            this.mouse_handler
-                .x(this.xform.domain(dm))
-                .y(this.yform.domain(dm));
-            this.zoom();
-        }
     }
 
     requestAnimationFrame(this.tick);
