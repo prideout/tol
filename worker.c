@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <locale.h>
 
 struct {
     float* original_boxes;
@@ -19,6 +20,12 @@ struct {
     par_sprune_context* context;
     float viewport[4];
     float winsize[2];
+
+    int32_t* tree;
+    int32_t nnodes;
+    par_bubbles_t* bubbles;
+    par_bubbles_t* culled;
+
 } app = {0};
 
 void d3cpp_set_winsize(float const* data, int nbytes)
@@ -99,5 +106,49 @@ void d3cpp_set_viewport(float const* data, int nbytes)
 
 void d3cpp_set_monolith(uint8_t const* data, int nbytes)
 {
-    tol_load_monolith(data, nbytes);
+    // Parse the monolith and pack it so that the ids are not sparse.
+    tol_monolith_t* monolith = tol_load_monolith(data, nbytes);
+    setlocale(LC_ALL, "");
+    printf("Loaded %'d clades.\n", monolith->nclades);
+    int32_t nnodes = monolith->nclades;
+    bool* parents = calloc(nnodes, sizeof(int32_t));
+    tol_monolith_t* packed = tol_monolith_pack(monolith);
+    tol_free_monolith(monolith);
+
+    // Describe a tree by generating a list of integers.
+    app.tree = malloc(sizeof(int32_t) * nnodes);
+    int32_t nparents = 0;
+    for (int32_t i = 0; i < nnodes; i++) {
+        int parent = packed->parents[i];
+        app.tree[i] = parent;
+        if (!parents[parent]) {
+            parents[parent] = true;
+            nparents++;
+        }
+    }
+    tol_free_monolith(packed);
+
+    // Add an additional child to every non-leaf node.  This is used
+    // to make space for a secondary label, and to prevent singly-nested
+    // nodes from ever occuring.
+    int nnewnodes = nnodes + nparents;
+    app.tree = realloc(app.tree, sizeof(int32_t) * nnewnodes);
+    int noldnodes = nnodes;
+    for (int32_t i = 0; i < noldnodes; i++) {
+        if (parents[i]) {
+            app.tree[nnodes++] = i;
+        }
+    }
+    free(parents);
+    app.nnodes = nnodes;
+
+    // Preferring vertical layout for 2-child families makes it less likely
+    // for children labels to collide with one another.
+    par_bubbles_set_orientation(PAR_BUBBLES_VERTICAL);
+
+    // Perform circle packing.
+    puts("Packing circles...");
+    app.bubbles = par_bubbles_hpack_local(app.tree, nnodes);
+    par_bubbles_set_filter(app.bubbles, PAR_BUBBLES_FILTER_DISCARD_LAST_CHILD);
+    puts("Done.");
 }
