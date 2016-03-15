@@ -1,5 +1,10 @@
+#include "tol.h"
+
 #define PAR_SPRUNE_IMPLEMENTATION
 #include "par/par_sprune.h"
+
+#define PAR_BUBBLES_IMPLEMENTATION
+#include "par/par_bubbles.h"
 
 #include <emscripten.h>
 #include <stdint.h>
@@ -92,7 +97,7 @@ void d3cpp_set_viewport(float const* data, int nbytes)
     d3cpp_execute();
 }
 
-void d3cpp_set_monolith(float const* data, int nbytes)
+void d3cpp_set_monolith(uint8_t const* data, int nbytes)
 {
-    printf("pdawg %d\n", nbytes);
+    tol_load_monolith(data, nbytes);
 }
