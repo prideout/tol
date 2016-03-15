@@ -91,3 +91,8 @@ void d3cpp_set_viewport(float const* data, int nbytes)
     #endif
     d3cpp_execute();
 }
+
+void d3cpp_set_monolith(float const* data, int nbytes)
+{
+    printf("pdawg %d\n", nbytes);
+}

@@ -22,19 +22,16 @@ var App = function() {
 
     var canvas = document.getElementsByTagName('canvas')[0];
     this.winsize = new Float32Array(2);
-    this.winsize_bytes = new Uint8Array(this.winsize.buffer);
     var width = this.winsize[0] = canvas.clientWidth;
     var height = this.winsize[1] = canvas.clientHeight;
-    this.send_message('d3cpp_set_winsize', this.winsize_bytes);
+    this.send_message('d3cpp_set_winsize', this.winsize);
 
     this.viewport = new Float32Array(4);
-    this.viewport_bytes = new Uint8Array(this.viewport.buffer);
 
     var count = 500, rsize = 0.02, msize = 0.1, i, j, cx, cy, w, h,
         randomX = d3.random.normal(this.winsize[0] / 2, this.winsize[0] / 5),
         randomY = d3.random.normal(this.winsize[1] / 2, this.winsize[1] / 5);
     this.data = new Float32Array(count * 4);
-    this.data_bytes = new Uint8Array(this.data.buffer);
     for (i = 0, j = 0; i < count; i++) {
         cx = randomX();
         cy = randomY();
@@ -44,7 +41,7 @@ var App = function() {
         this.data[j++] = cx + w;
         this.data[j++] = cy + h;
     }
-    this.send_message('d3cpp_set_data', this.data_bytes);
+    this.send_message('d3cpp_set_data', this.data);
 
     var x = this.xform = d3.scale.linear()
         .domain([0, width])
@@ -87,6 +84,11 @@ var App = function() {
 
     this.tick = this.tick.bind(this);
     this.tick();
+
+    var url = 'http://broadphase.net/monolith.0000.partial.txt';
+    this.fetch(url, function(arraybuf) {
+        this.send_message('d3cpp_set_monolith', arraybuf)
+    }.bind(this));
 };
 
 App.prototype.refresh_viewport = function() {
@@ -102,6 +104,11 @@ App.prototype.refresh_viewport = function() {
 };
 
 App.prototype.send_message = function(msg, data) {
+    if (!data.buffer) {
+        data = new Uint8Array(data);
+    } else if (data.BYTES_PER_ELEMENT != 1) {
+        data = new Uint8Array(data.buffer);
+    }
     this.worker.postMessage({
         'funcName': msg,
         'data': data
@@ -147,7 +154,7 @@ App.prototype.compute_viewport = function() {
     this.viewport[1] = ydomain[0];
     this.viewport[2] = xdomain[1];
     this.viewport[3] = ydomain[1];
-    return this.viewport_bytes;
+    return this.viewport;
 };
 
 App.prototype.zoom = function() {
@@ -200,6 +207,23 @@ App.prototype.draw = function() {
             canvas.fillRect(cx - w * 0.5, cy - h * 0.5, w, h);
         }
     }
+};
+
+App.prototype.fetch = function(url, onload) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
+    var onloadFunc = function() {
+        if (xhr.response) {
+            onload(xhr.response);
+        }
+    };
+    var errorFunc = function() {
+        window.console.error('Unable to download ' + url);
+    };
+    xhr.onload = onloadFunc;
+    xhr.onerror = errorFunc;
+    xhr.send();
 };
 
 var app = new App();
