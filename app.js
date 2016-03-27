@@ -5,19 +5,20 @@ var App = function() {
     this.worker = new Worker('worker.js');
     this.collisions = null;
     this.culled = null;
+    this.circles = null;
     this.start_time = performance.now();
+    this.outer_radius = 200;
 
     // This flag enables us to avoid queuing up work when collision takes
     // longer than a single frame.
     this.pending_collision = false;
 
     this.worker.onmessage = function(msg) {
-        this.pending_collision = false;
-        var current = performance.now();
-        var time = Math.floor(current - this.start_time);
-        this.collisions = new Uint32Array(msg.data.collisions.buffer);
-        this.culled = new Uint32Array(msg.data.culled.buffer);
-        this.dirty_draw = true;
+        if (msg.data.event == 'collisions') {
+            this.on_collisions(msg.data.collisions, msg.data.culled);
+        } else if (msg.data.event == 'bubbles') {
+            this.on_bubbles(msg.data.bubbles);
+        }
     }.bind(this);
 
     var canvas = document.getElementsByTagName('canvas')[0];
@@ -91,6 +92,18 @@ var App = function() {
     }.bind(this));
 };
 
+App.prototype.on_collisions = function(collisions, culled) {
+    this.pending_collision = false;
+    this.collisions = new Uint32Array(collisions.buffer);
+    this.culled = new Uint32Array(culled.buffer);
+    this.dirty_draw = true;
+};
+
+App.prototype.on_bubbles = function(bubbles) {
+    this.circles = new Float32Array(bubbles.buffer);
+    this.dirty_draw = true;
+};
+
 App.prototype.refresh_viewport = function() {
     var pixelScale = this.pixelScale = window.devicePixelRatio;
     var canvas = document.getElementsByTagName('canvas')[0];
@@ -162,49 +175,27 @@ App.prototype.zoom = function() {
 };
 
 App.prototype.draw = function() {
-    var i = -1, j = 0, data = this.data, n = data.length / 4,
-        cx, cy, x0, y0, x1, y1, w, h,
-        canvas = this.context, x = this.xform, y = this.yform;
-    canvas.clearRect(0, 0, this.winsize[0], this.winsize[1]);
-    canvas.strokeStyle = "rgba(0, 0, 0, 0.25)";
-    canvas.fillStyle = "rgba(0, 128, 255, 0.1)";
+    var i, cx, cy, r, w, h,
+        ctx = this.context, x = this.xform, y = this.yform,
+        twopi = 2 * Math.PI,
+        hx = this.winsize[0] * 0.5,
+        hy = this.winsize[1] * 0.5,
+        xyscale = this.outer_radius,
+        rscale = xyscale * (x.range()[1] / (x.domain()[1] - x.domain()[0]));
 
-    // Draw black outlines for every non-culled box.
-    while (++i < n) {
-        x0 = data[j++];
-        y0 = data[j++];
-        x1 = data[j++];
-        y1 = data[j++];
-        cx = x(0.5 * (x0 + x1));
-        cy = y(0.5 * (y0 + y1));
-        w = x1 - x0;
-        h = y1 - y0;
-        canvas.strokeRect(cx - w * 0.5, cy - h * 0.5, w, h);
-    }
+    ctx.clearRect(0, 0, this.winsize[0], this.winsize[1]);
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+    ctx.fillStyle = "rgba(0, 128, 255, 0.1)";
 
-    // Draw bluish fill for every box that has overlap.
-    if (this.collisions) {
-        for (var i = 0; i < this.collisions.length; i += 2) {
-            j = this.collisions[i] * 4;
-            x0 = data[j++];
-            y0 = data[j++];
-            x1 = data[j++];
-            y1 = data[j];
-            cx = x(0.5 * (x0 + x1));
-            cy = y(0.5 * (y0 + y1));
-            w = x1 - x0;
-            h = y1 - y0;
-            canvas.fillRect(cx - w * 0.5, cy - h * 0.5, w, h);
-            j = this.collisions[i + 1] * 4;
-            x0 = data[j++];
-            y0 = data[j++];
-            x1 = data[j++];
-            y1 = data[j];
-            cx = x(0.5 * (x0 + x1));
-            cy = y(0.5 * (y0 + y1));
-            w = x1 - x0;
-            h = y1 - y0;
-            canvas.fillRect(cx - w * 0.5, cy - h * 0.5, w, h);
+    if (this.circles) {
+        for (i = 0; i < this.circles.length;) {
+            cx = x(xyscale * this.circles[i++] + hx);
+            cy = y(xyscale * this.circles[i++] + hy);
+            r = rscale * this.circles[i++];
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, twopi);
+            ctx.fill();
+            ctx.stroke();
         }
     }
 };

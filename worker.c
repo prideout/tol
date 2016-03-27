@@ -3,6 +3,7 @@
 #define PAR_SPRUNE_IMPLEMENTATION
 #include "par/par_sprune.h"
 
+#define PAR_BUBBLES_FLT float
 #define PAR_BUBBLES_IMPLEMENTATION
 #include "par/par_bubbles.h"
 
@@ -45,7 +46,7 @@ void d3cpp_set_data(uint8_t const* data, int nbytes)
     memcpy(app.original_boxes, data, nbytes);
 }
 
-static void d3cpp_execute()
+static void do_collisions()
 {
     if (app.transformed_boxes == 0) {
         app.transformed_boxes = malloc(app.nboxes * 16);
@@ -85,23 +86,55 @@ static void d3cpp_execute()
 
     EM_ASM_INT({
         postMessage({
+            event: "collisions",
             collisions: new Uint8Array(HEAPU8.subarray($0, $1)),
             culled: new Uint8Array(HEAPU8.subarray($2, $3)),
         });
     }, collisions, collisions + ncollisions * 8, culled, culled + nculled * 4);
 }
 
-void d3cpp_set_viewport(float const* data, int nbytes)
+static void do_culling()
+{
+    float aabb[4];
+    float w2 = 0.5f * (app.viewport[2] - app.viewport[0]);
+    float h2 = 0.5f * (app.viewport[3] - app.viewport[1]);
+    aabb[0] = -1;//app.viewport[0] - w2;
+    aabb[1] = -1;//app.viewport[1] - h2;
+    aabb[2] = 1;//app.viewport[2] - w2;
+    aabb[3] = 1;//app.viewport[3] - h2;
+
+    // Cull bubbles to viewport.
+    float minradius = 0.01;
+    int32_t root = 0;
+    app.culled = par_bubbles_cull_local(app.bubbles, aabb, minradius,
+        root, app.culled);
+
+    // Send culled circles over the wire.
+    uint8_t const* xyr_data = (uint8_t const*) app.culled->xyr;
+    int nfloats = app.culled->count * 3;
+    EM_ASM_INT({
+        postMessage({
+            event: "bubbles",
+            bubbles: new Uint8Array(HEAPU8.subarray($0, $1))
+        });
+    }, xyr_data, xyr_data + nfloats * 4);
+}
+
+void d3cpp_set_viewport(float const* aabb, int nbytes)
 {
     assert(nbytes == 16);
-    app.viewport[0] = data[0];
-    app.viewport[1] = data[1];
-    app.viewport[2] = data[2];
-    app.viewport[3] = data[3];
+    app.viewport[0] = aabb[0];
+    app.viewport[1] = aabb[1];
+    app.viewport[2] = aabb[2];
+    app.viewport[3] = aabb[3];
     #ifdef VERBOSE
-    printf("%.2f %.2f %.2f %.2f\n", data[0], data[1], data[2], data[2]);
+    printf("%.2f %.2f %.2f %.2f\n", aabb[0], aabb[1], aabb[2], aabb[2]);
     #endif
-    d3cpp_execute();
+
+    do_collisions();
+    if (app.bubbles) {
+        do_culling();
+    }
 }
 
 void d3cpp_set_monolith(uint8_t const* data, int nbytes)
@@ -150,5 +183,5 @@ void d3cpp_set_monolith(uint8_t const* data, int nbytes)
     puts("Packing circles...");
     app.bubbles = par_bubbles_hpack_local(app.tree, nnodes);
     par_bubbles_set_filter(app.bubbles, PAR_BUBBLES_FILTER_DISCARD_LAST_CHILD);
-    puts("Done.");
+    do_culling();
 }
