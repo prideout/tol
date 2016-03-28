@@ -31,16 +31,9 @@ void d3cpp_set_winsize(float const* data, int nbytes)
 
 static void do_culling()
 {
-    float aabb[4];
-    // float w2 = 0.5f * (app.viewport[2] - app.viewport[0]);
-    // float h2 = 0.5f * (app.viewport[3] - app.viewport[1]);
-    aabb[0] = -1;//app.viewport[0] - w2;
-    aabb[1] = -1;//app.viewport[1] - h2;
-    aabb[2] = 1;//app.viewport[2] - w2;
-    aabb[3] = 1;//app.viewport[3] - h2;
-
     // Cull bubbles to viewport.
     float minradius = 0.01;
+    float const* aabb = app.viewport;
     int32_t root = 0;
     app.culled = par_bubbles_cull_local(app.bubbles, aabb, minradius,
         root, app.culled);

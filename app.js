@@ -5,7 +5,6 @@ var App = function() {
     this.worker = new Worker('worker.js');
     this.circles = null;
     this.start_time = performance.now();
-    this.outer_radius = 200;
     this.winsize = new Float32Array(2);
     this.viewport = new Float32Array(4);
 
@@ -24,12 +23,14 @@ var App = function() {
     var height = this.winsize[1] = canvas.clientHeight;
     this.send_message('d3cpp_set_winsize', this.winsize);
 
+    var xdomain = [-width / 400, width / 400];
     var x = this.xform = d3.scale.linear()
-        .domain([0, width])
+        .domain(xdomain)
         .range([0, width]);
 
+    var ydomain = [-height / 400, height / 400];
     var y = this.yform = d3.scale.linear()
-        .domain([0, height])
+        .domain(ydomain)
         .range([height, 0]);
 
     var onzoom = this.zoom.bind(this);
@@ -42,8 +43,8 @@ var App = function() {
 
     document.getElementById("home").onclick = function() {
         d3.transition().duration(750).tween("zoom", function() {
-            var ix = d3.interpolate(x.domain(), [0, width]),
-                iy = d3.interpolate(y.domain(), [0, height]);
+            var ix = d3.interpolate(x.domain(), xdomain),
+                iy = d3.interpolate(y.domain(), ydomain);
             return function(t) {
               zoomer.x(x.domain(ix(t))).y(y.domain(iy(t)));
               onzoom();
@@ -149,22 +150,19 @@ App.prototype.zoom = function() {
 };
 
 App.prototype.draw = function() {
-    var i, cx, cy, r, w, h,
-        ctx = this.context, x = this.xform, y = this.yform,
+    var i, cx, cy, r,
+        ctx = this.context,
         twopi = 2 * Math.PI,
-        hx = this.winsize[0] * 0.5,
-        hy = this.winsize[1] * 0.5,
-        xyscale = this.outer_radius,
-        rscale = xyscale * (x.range()[1] / (x.domain()[1] - x.domain()[0]));
-
+        range = this.xform.range(),
+        domain = this.xform.domain(),
+        rscale = range[1] / (domain[1] - domain[0]);
     ctx.clearRect(0, 0, this.winsize[0], this.winsize[1]);
     ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
     ctx.fillStyle = "rgba(0, 128, 255, 0.1)";
-
     if (this.circles) {
         for (i = 0; i < this.circles.length;) {
-            cx = x(xyscale * this.circles[i++] + hx);
-            cy = y(xyscale * this.circles[i++] + hy);
+            cx = this.xform(this.circles[i++]);
+            cy = this.yform(this.circles[i++]);
             r = rscale * this.circles[i++];
             ctx.beginPath();
             ctx.arc(cx, cy, r, 0, twopi);
