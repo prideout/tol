@@ -3,7 +3,6 @@
 emcc worker.c monolith.c -o worker.js \
     --memory-init-file 0 \
     -s 'EXPORTED_FUNCTIONS=[
-        "_d3cpp_set_data",
         "_d3cpp_set_viewport",
         "_d3cpp_set_winsize",
         "_d3cpp_set_monolith",

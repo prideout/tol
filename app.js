@@ -3,46 +3,26 @@
 var App = function() {
 
     this.worker = new Worker('worker.js');
-    this.collisions = null;
-    this.culled = null;
     this.circles = null;
     this.start_time = performance.now();
     this.outer_radius = 200;
+    this.winsize = new Float32Array(2);
+    this.viewport = new Float32Array(4);
 
-    // This flag enables us to avoid queuing up work when collision takes
+    // This flag enables us to avoid queuing up work when culling takes
     // longer than a single frame.
-    this.pending_collision = false;
+    this.pending = false;
 
     this.worker.onmessage = function(msg) {
-        if (msg.data.event == 'collisions') {
-            this.on_collisions(msg.data.collisions, msg.data.culled);
-        } else if (msg.data.event == 'bubbles') {
+        if (msg.data.event == 'bubbles') {
             this.on_bubbles(msg.data.bubbles);
         }
     }.bind(this);
 
     var canvas = document.getElementsByTagName('canvas')[0];
-    this.winsize = new Float32Array(2);
     var width = this.winsize[0] = canvas.clientWidth;
     var height = this.winsize[1] = canvas.clientHeight;
     this.send_message('d3cpp_set_winsize', this.winsize);
-
-    this.viewport = new Float32Array(4);
-
-    var count = 500, rsize = 0.02, msize = 0.1, i, j, cx, cy, w, h,
-        randomX = d3.random.normal(this.winsize[0] / 2, this.winsize[0] / 5),
-        randomY = d3.random.normal(this.winsize[1] / 2, this.winsize[1] / 5);
-    this.data = new Float32Array(count * 4);
-    for (i = 0, j = 0; i < count; i++) {
-        cx = randomX();
-        cy = randomY();
-        h = w = this.winsize[0] * rsize * (msize + Math.random());
-        this.data[j++] = cx - w;
-        this.data[j++] = cy - h;
-        this.data[j++] = cx + w;
-        this.data[j++] = cy + h;
-    }
-    this.send_message('d3cpp_set_data', this.data);
 
     var x = this.xform = d3.scale.linear()
         .domain([0, width])
@@ -83,23 +63,17 @@ var App = function() {
 
     this.refresh_viewport();
 
-    this.tick = this.tick.bind(this);
-    this.tick();
-
     var url = 'http://broadphase.net/monolith.0000.partial.txt';
     this.fetch(url, function(arraybuf) {
         this.send_message('d3cpp_set_monolith', arraybuf)
     }.bind(this));
-};
 
-App.prototype.on_collisions = function(collisions, culled) {
-    this.pending_collision = false;
-    this.collisions = new Uint32Array(collisions.buffer);
-    this.culled = new Uint32Array(culled.buffer);
-    this.dirty_draw = true;
+    this.tick = this.tick.bind(this);
+    this.tick();
 };
 
 App.prototype.on_bubbles = function(bubbles) {
+    this.pending = false;
     this.circles = new Float32Array(bubbles.buffer);
     this.dirty_draw = true;
 };
@@ -139,8 +113,8 @@ App.prototype.tick = function() {
 
         // If the worker is still busy, don't queue up requests, and don't
         // clear the dirty flag.
-        if (!this.pending_collision) {
-            this.pending_collision = true;
+        if (!this.pending) {
+            this.pending = true;
             this.send_message('d3cpp_set_viewport', this.compute_viewport());
             this.start_time = performance.now();
             this.dirty_viewport = false;
