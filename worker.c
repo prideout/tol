@@ -30,7 +30,7 @@ void d3cpp_set_winsize(float const* data, int nbytes)
 static void do_culling()
 {
     // Transform screen space minradius to world space.
-    float minradius = 4;
+    float minradius = 2;
     float viewwidth = app.viewport[2] - app.viewport[0];
     minradius = minradius * viewwidth / app.winsize[0];
 

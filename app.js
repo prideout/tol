@@ -150,20 +150,22 @@ App.prototype.zoom = function() {
 };
 
 App.prototype.draw = function() {
-    var i, cx, cy, r,
+    var i, cx, cy, r, alpha = 1,
         ctx = this.context,
         twopi = 2 * Math.PI,
         range = this.xform.range(),
         domain = this.xform.domain(),
         rscale = range[1] / (domain[1] - domain[0]);
     ctx.clearRect(0, 0, this.winsize[0], this.winsize[1]);
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
-    ctx.fillStyle = "rgba(0, 128, 255, 0.1)";
+    ctx.strokeStyle = "rgba(0, 0, 0, " + 0.4 * alpha + ")";
+    ctx.fillStyle = "rgba(0, 128, 255, " + 0.1 * alpha + ")";
     if (this.circles) {
         for (i = 0; i < this.circles.length;) {
             cx = this.xform(this.circles[i++]);
             cy = this.yform(this.circles[i++]);
             r = rscale * this.circles[i++];
+            alpha = Math.max(0, Math.min(1, (r - 2) / 2));
+            r *= alpha;
             ctx.beginPath();
             ctx.arc(cx, cy, r, 0, twopi);
             ctx.fill();
