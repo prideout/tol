@@ -2,7 +2,7 @@
 
 var App = function() {
 
-    this.worker = new Worker('worker.js');
+    this.worker = new Worker('generated/worker.js');
     this.circles = null;
     this.start_time = performance.now();
     this.winsize = new Float32Array(2);
