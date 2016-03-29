@@ -14,12 +14,10 @@
 struct {
     float viewport[4];
     float winsize[2];
-
     int32_t* tree;
     int32_t nnodes;
     par_bubbles_t* bubbles;
     par_bubbles_t* culled;
-
 } app = {{0}};
 
 void d3cpp_set_winsize(float const* data, int nbytes)
@@ -31,8 +29,12 @@ void d3cpp_set_winsize(float const* data, int nbytes)
 
 static void do_culling()
 {
+    // Transform screen space minradius to world space.
+    float minradius = 4;
+    float viewwidth = app.viewport[2] - app.viewport[0];
+    minradius = minradius * viewwidth / app.winsize[0];
+
     // Cull bubbles to viewport.
-    float minradius = 0.01;
     float const* aabb = app.viewport;
     int32_t root = 0;
     app.culled = par_bubbles_cull_local(app.bubbles, aabb, minradius,
