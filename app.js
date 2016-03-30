@@ -7,6 +7,7 @@ var App = function() {
     this.start_time = performance.now();
     this.winsize = new Float32Array(2);
     this.viewport = new Float32Array(4);
+    this.dump_timings = false;
 
     // This flag enables us to avoid queuing up work when culling takes
     // longer than a single frame.
@@ -77,6 +78,11 @@ App.prototype.on_bubbles = function(bubbles) {
     this.pending = false;
     this.circles = new Float32Array(bubbles.buffer);
     this.dirty_draw = true;
+    if (this.dump_timings) {
+        var ms = performance.now() - this.start_time;
+        ms = Math.round(ms * 10) / 10;
+        console.log(ms + ' ms');
+    }
 };
 
 App.prototype.refresh_viewport = function() {
@@ -116,8 +122,8 @@ App.prototype.tick = function() {
         // clear the dirty flag.
         if (!this.pending) {
             this.pending = true;
-            this.send_message('d3cpp_set_viewport', this.compute_viewport());
             this.start_time = performance.now();
+            this.send_message('d3cpp_set_viewport', this.compute_viewport());
             this.dirty_viewport = false;
         }
 
