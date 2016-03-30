@@ -98,7 +98,9 @@ App.prototype.refresh_viewport = function() {
 };
 
 App.prototype.send_message = function(msg, data) {
+    var transferable = undefined;
     if (!data.buffer) {
+        transferable = [data];
         data = new Uint8Array(data);
     } else if (data.BYTES_PER_ELEMENT != 1) {
         data = new Uint8Array(data.buffer);
@@ -106,7 +108,7 @@ App.prototype.send_message = function(msg, data) {
     this.worker.postMessage({
         'funcName': msg,
         'data': data
-    });
+    }, transferable);
 };
 
 App.prototype.tick = function() {

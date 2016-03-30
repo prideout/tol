@@ -44,10 +44,11 @@ static void do_culling()
     uint8_t const* xyr_data = (uint8_t const*) app.culled->xyr;
     int nfloats = app.culled->count * 3;
     EM_ASM_INT({
+        var barray = new Uint8Array(HEAPU8.subarray($0, $1));
         postMessage({
             event: "bubbles",
-            bubbles: new Uint8Array(HEAPU8.subarray($0, $1))
-        });
+            bubbles: barray
+        }, [barray.buffer]);
     }, xyr_data, xyr_data + nfloats * 4);
 }
 
