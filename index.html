@@ -15,6 +15,12 @@ html {
     font-weight: 400;
     text-rendering: optimizeLegibility;
     height: 100%;
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none;   /* Chrome/Safari/Opera */
+    -khtml-user-select: none;    /* Konqueror */
+    -moz-user-select: none;      /* Firefox */
+    -ms-user-select: none;       /* IE/Edge */
+    user-select: none;
 }
 body {
     padding: 0;
@@ -69,6 +75,12 @@ overlay.right {
     right: 10px;
     width: 50px;
 }
+overlay p {
+    font-family: Sans-Serif;
+    font-size: 10px;
+    margin-left: 5px;
+    pointer-events: none;
+}
 @font-face {
     font-family: 'fontello';
     src: url('fontello/font/fontello.eot?80860773');
@@ -106,6 +118,7 @@ icon {
         <a id="home"><icon>&#xe802;</icon></a>
         <a href="https://github.com/prideout/tol"><icon>&#xe801;</icon></a>
         <a id="search" class="disabled"><icon>&#xe800;</icon></a>
+        <p id="nclades"></p>
     </overlay>
 </article>
 <script src="//d3js.org/d3.v3.min.js"></script>

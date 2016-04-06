@@ -111,8 +111,15 @@ void d3cpp_set_monolith(uint8_t const* data, int nbytes)
     par_bubbles_set_orientation(PAR_BUBBLES_VERTICAL);
 
     // Perform circle packing.
-    puts("Packing circles...");
     app.bubbles = par_bubbles_hpack_local(app.tree, nnodes);
     par_bubbles_set_filter(app.bubbles, PAR_BUBBLES_FILTER_DISCARD_LAST_CHILD);
+    EM_ASM_INT({
+        postMessage({
+            event: "ready",
+            count: $0
+        });
+    }, app.bubbles->count);
+
+    // Send over the inital batch of bubble data.
     do_culling();
 }

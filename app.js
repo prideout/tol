@@ -2,27 +2,38 @@
 
 var App = function() {
 
-    this.worker = new Worker('generated/worker.js');
+    this.workers = [
+        new Worker('generated/worker.js'),
+        new Worker('generated/worker.js')
+    ];
+    this.worker = this.workers[0];
     this.circles = null;
     this.start_time = performance.now();
     this.winsize = new Float32Array(2);
     this.viewport = new Float32Array(4);
     this.dump_timings = false;
+    this.load_state = 0;
 
     // This flag enables us to avoid queuing up work when culling takes
     // longer than a single frame.
     this.pending = false;
 
-    this.worker.onmessage = function(msg) {
+    var onmessage = function(msg) {
         if (msg.data.event == 'bubbles') {
             this.on_bubbles(msg.data.bubbles);
+        } else if (msg.data.event == 'ready') {
+            this.on_ready(msg.data.count);
         }
     }.bind(this);
+
+    this.workers[0].onmessage = onmessage;
+    this.workers[1].onmessage = onmessage;
 
     var canvas = document.getElementsByTagName('canvas')[0];
     var width = this.winsize[0] = canvas.clientWidth;
     var height = this.winsize[1] = canvas.clientHeight;
-    this.send_message('d3cpp_set_winsize', this.winsize);
+    this.send_message(this.workers[0], 'd3cpp_set_winsize', this.winsize);
+    this.send_message(this.workers[1], 'd3cpp_set_winsize', this.winsize);
 
     var xdomain = [-width / 400, width / 400];
     var x = this.xform = d3.scale.linear()
@@ -67,7 +78,7 @@ var App = function() {
 
     var url = 'http://broadphase.net/monolith.0000.partial.txt';
     this.fetch(url, function(arraybuf) {
-        this.send_message('d3cpp_set_monolith', arraybuf)
+        this.send_message(this.workers[0], 'd3cpp_set_monolith', arraybuf)
     }.bind(this));
 
     this.tick = this.tick.bind(this);
@@ -85,6 +96,29 @@ App.prototype.on_bubbles = function(bubbles) {
     }
 };
 
+App.prototype.on_ready = function(count) {
+
+    // Let the user know how many clades have been loaded.
+    var el = document.getElementById('nclades');
+    el.innerHTML = count.toLocaleString() + ' clades';
+
+    // If the first batch finished loading in, then kick off a load
+    // for the second batch.
+    if (this.load_state++ == 0) {
+        var url = 'http://broadphase.net/monolith.0000.txt';
+        this.fetch(url, function(arraybuf) {
+            this.send_message(this.workers[1], 'd3cpp_set_monolith', arraybuf);
+        }.bind(this));
+
+    // If the second batch finished loading in, then swap workers.
+    } else {
+        this.workers[0].terminate();
+        this.workers[0] = null;
+        this.worker = this.workers[1];
+        this.dirty_viewport = true;
+    }
+};
+
 App.prototype.refresh_viewport = function() {
     var pixelScale = this.pixelScale = window.devicePixelRatio;
     var canvas = document.getElementsByTagName('canvas')[0];
@@ -97,7 +131,7 @@ App.prototype.refresh_viewport = function() {
     this.dirty_viewport = true;
 };
 
-App.prototype.send_message = function(msg, data) {
+App.prototype.send_message = function(worker, msg, data) {
     var transferable = undefined;
     if (!data.buffer) {
         transferable = [data];
@@ -105,7 +139,7 @@ App.prototype.send_message = function(msg, data) {
     } else if (data.BYTES_PER_ELEMENT != 1) {
         data = new Uint8Array(data.buffer);
     }
-    this.worker.postMessage({
+    worker.postMessage({
         'funcName': msg,
         'data': data
     }, transferable);
@@ -125,7 +159,8 @@ App.prototype.tick = function() {
         if (!this.pending) {
             this.pending = true;
             this.start_time = performance.now();
-            this.send_message('d3cpp_set_viewport', this.compute_viewport());
+            this.send_message(this.worker, 'd3cpp_set_viewport',
+                this.compute_viewport());
             this.dirty_viewport = false;
         }
 
